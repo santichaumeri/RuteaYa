@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RuteaYa.Api.Middleware;
 using RuteaYa.Logica.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,7 +11,29 @@ builder.Services.AddDbContext<RuteaYaDbContext>(options =>
         builder.Configuration.GetConnectionString("DefaultConnection"),
         sql => sql.MigrationsAssembly("RuteaYa.Logica")));
 
+// Manejo global de errores (400, 401, 403, 404, 409, 500)
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<ManejadorGlobalDeExcepciones>();
+
+// Swagger / OpenAPI
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    // Incluye los comentarios /// de los controllers en la documentacion
+    var xmlFile = $"{typeof(Program).Assembly.GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+});
+
 var app = builder.Build();
+
+app.UseExceptionHandler();   // tiene que ir primero en el pipeline
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
