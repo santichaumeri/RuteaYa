@@ -1,6 +1,9 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RuteaYa.Api.Middleware;
+using RuteaYa.Entidades;
 using RuteaYa.Logica.Data;
+using RuteaYa.Logica.Servicios;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +13,10 @@ builder.Services.AddDbContext<RuteaYaDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         sql => sql.MigrationsAssembly("RuteaYa.Logica")));
+
+// Servicios de negocio (viven en RuteaYa.Logica). Los controllers los reciben por inyección.
+builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
+builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 
 // Manejo global de errores (400, 401, 403, 404, 409, 500)
 builder.Services.AddProblemDetails();

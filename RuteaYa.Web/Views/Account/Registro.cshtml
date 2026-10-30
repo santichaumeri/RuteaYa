@@ -1,0 +1,52 @@
+@model RegistroViewModel
+@{
+    ViewData["Title"] = "Registro";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <h1 class="h3 mb-3">Crear cuenta</h1>
+
+        @* Errores generales (ej. email ya registrado) que vienen de la API *@
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+        <form asp-action="Registro" method="post">
+            <div class="mb-3">
+                <label asp-for="Nombre" class="form-label"></label>
+                <input asp-for="Nombre" class="form-control" />
+                <span asp-validation-for="Nombre" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Apellido" class="form-label"></label>
+                <input asp-for="Apellido" class="form-control" />
+                <span asp-validation-for="Apellido" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" autocomplete="username" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label"></label>
+                <input asp-for="Password" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="ConfirmarPassword" class="form-label"></label>
+                <input asp-for="ConfirmarPassword" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="ConfirmarPassword" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Registrarme</button>
+            <a asp-action="Login" class="btn btn-link">Ya tengo cuenta</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
