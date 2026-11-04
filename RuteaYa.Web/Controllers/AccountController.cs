@@ -26,7 +26,7 @@ public class AccountController : Controller
         // Si ya hay sesión no tiene sentido mostrar el login.
         if (User.Identity?.IsAuthenticated == true)
         {
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction("Index", "Dashboard");
         }
 
         ViewData["ReturnUrl"] = returnUrl;
@@ -64,7 +64,7 @@ public class AccountController : Controller
         {
             return Redirect(returnUrl);
         }
-        return RedirectToAction("Index", "Home");
+        return RedirectToAction("Index", "Dashboard");
     }
 
     [HttpGet]
@@ -72,7 +72,7 @@ public class AccountController : Controller
     {
         if (User.Identity?.IsAuthenticated == true)
         {
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction("Index", "Dashboard");
         }
 
         return View(new RegistroViewModel());
@@ -122,7 +122,8 @@ public class AccountController : Controller
         {
             new(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
             new(ClaimTypes.Name, $"{usuario.Nombre} {usuario.Apellido}"),
-            new(ClaimTypes.Email, usuario.Email)
+            new(ClaimTypes.Email, usuario.Email),
+            new("access_token", usuario.Token ?? string.Empty)
         };
         var identidad = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 

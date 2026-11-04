@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using RuteaYa.Logica.Dtos;
 using RuteaYa.Logica.Servicios;
+using RuteaYa.Api.Services.Auth;
 
 namespace RuteaYa.Api.Controllers;
 
@@ -14,10 +15,12 @@ namespace RuteaYa.Api.Controllers;
 public class UsuariosController : ControllerBase
 {
     private readonly IUsuarioService _usuarioService;
+    private readonly IJwtTokenService _jwtTokenService;
 
-    public UsuariosController(IUsuarioService usuarioService)
+    public UsuariosController(IUsuarioService usuarioService, IJwtTokenService jwtTokenService)
     {
         _usuarioService = usuarioService;
+        _jwtTokenService = jwtTokenService;
     }
 
     /// <summary>
@@ -56,6 +59,13 @@ public class UsuariosController : ControllerBase
         LoginRequest request, CancellationToken cancellationToken)
     {
         var usuario = await _usuarioService.LoginAsync(request, cancellationToken);
-        return Ok(usuario);
+        return Ok(new UsuarioResponse
+        {
+            Id = usuario.Id,
+            Nombre = usuario.Nombre,
+            Apellido = usuario.Apellido,
+            Email = usuario.Email,
+            Token = _jwtTokenService.CrearToken(usuario)
+        });
     }
 }
