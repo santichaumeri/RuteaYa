@@ -1,0 +1,125 @@
+@model RuteaYa.Web.Models.Dashboard.DashboardViewModel
+@using System.Globalization
+@{
+    Layout = null;
+    var cultura = CultureInfo.GetCultureInfo("es-AR");
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard - RuteaYa</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+</head>
+<body class="dashboard-page">
+    <div class="dashboard-shell">
+        <aside class="dashboard-sidebar">
+            <a class="brand" asp-controller="Dashboard" asp-action="Index">RuteaYa</a>
+            <nav class="sidebar-nav" aria-label="Menú principal">
+                <a class="sidebar-link active" asp-controller="Dashboard" asp-action="Index">Inicio</a>
+                <a class="sidebar-link" asp-controller="Viajes" asp-action="Index">Mis viajes</a>
+                <a class="sidebar-link" asp-controller="Envios" asp-action="Index">Mis envíos</a>
+                <a class="sidebar-link" asp-controller="Oportunidades" asp-action="Index">Oportunidades</a>
+                <a class="sidebar-link" asp-controller="Optimizador" asp-action="Index">Optimizador</a>
+                <a class="sidebar-link" asp-controller="Transportes" asp-action="Index">Mis transportes</a>
+                <a class="sidebar-link" asp-controller="Historial" asp-action="Index">Historial</a>
+            </nav>
+            <div class="sidebar-user">
+                <strong>@Model.NombreUsuario</strong>
+                <form asp-controller="Account" asp-action="Logout" method="post">
+                    <button class="logout-button" type="submit">Cerrar sesión</button>
+                </form>
+            </div>
+        </aside>
+
+        <main class="dashboard-content">
+            <header class="dashboard-header">
+                <div>
+                    <h1>Hola, @Model.NombreUsuario</h1>
+                    <p>Esto pasa con tus viajes y envíos.</p>
+                </div>
+                <div class="quick-actions">
+                    <a class="button button-light" asp-controller="Envios" asp-action="Create">Nuevo envío</a>
+                    <a class="button button-dark" asp-controller="Viajes" asp-action="Create">Nuevo viaje</a>
+                </div>
+            </header>
+
+            <section class="summary-grid" aria-label="Resumen">
+                <article class="summary-card">
+                    <span>Próximos viajes</span>
+                    <strong>@Model.ProximosViajes</strong>
+                </article>
+                <article class="summary-card">
+                    <span>Envíos pendientes</span>
+                    <strong>@Model.EnviosPendientes</strong>
+                </article>
+                <article class="summary-card">
+                    <span>Oportunidades</span>
+                    <strong>@Model.Oportunidades</strong>
+                </article>
+                <article class="summary-card summary-card-highlight">
+                    <span>Potencial del mes</span>
+                    <strong>@Model.PotencialMes.ToString("C0", cultura)</strong>
+                </article>
+            </section>
+
+            <section class="dashboard-panels">
+                <article class="dashboard-panel">
+                    <div class="panel-heading">
+                        <h2>Próximos viajes</h2>
+                        <a asp-controller="Viajes" asp-action="Index">Ver todos</a>
+                    </div>
+                    @if (Model.Viajes.Count == 0)
+                    {
+                        <p class="empty-state">Todavía no tenés viajes activos.</p>
+                    }
+                    else
+                    {
+                        <div class="dashboard-list">
+                            @foreach (var viaje in Model.Viajes)
+                            {
+                                <a class="dashboard-list-item" asp-controller="Viajes" asp-action="Details" asp-route-id="@viaje.Id">
+                                    <span>
+                                        <strong>@viaje.Ruta</strong>
+                                        <small>@viaje.Dias · @viaje.Horario</small>
+                                    </span>
+                                    <span class="status-badge status-active">@viaje.Estado</span>
+                                </a>
+                            }
+                        </div>
+                    }
+                </article>
+
+                <article class="dashboard-panel">
+                    <div class="panel-heading">
+                        <h2>Envíos pendientes</h2>
+                        <a asp-controller="Envios" asp-action="Index">Ver todos</a>
+                    </div>
+                    @if (Model.Envios.Count == 0)
+                    {
+                        <p class="empty-state">No tenés envíos pendientes.</p>
+                    }
+                    else
+                    {
+                        <div class="dashboard-list">
+                            @foreach (var envio in Model.Envios)
+                            {
+                                <a class="dashboard-list-item" asp-controller="Envios" asp-action="Details" asp-route-id="@envio.Id">
+                                    <span>
+                                        <strong>@envio.Ruta</strong>
+                                        <small>@envio.Descripcion · @envio.MontoOfrecido.ToString("C0", cultura)</small>
+                                    </span>
+                                    <span class="status-badge">@envio.Estado</span>
+                                </a>
+                            }
+                        </div>
+                    }
+                    <a class="button button-light panel-action" asp-controller="Oportunidades" asp-action="Index">Ver oportunidades</a>
+                </article>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

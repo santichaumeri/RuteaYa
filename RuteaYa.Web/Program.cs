@@ -5,6 +5,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient<DashboardApiClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"]!);
+});
 
 // Cliente HTTP tipado hacia la API. La URL base sale de "ApiBaseUrl" en appsettings.json.
 builder.Services.AddHttpClient<IUsuariosApiClient, UsuariosApiClient>(client =>
