@@ -66,6 +66,15 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+// En desarrollo, aplica las migraciones pendientes al iniciar (crea la base si no existe).
+// Así después de un git pull no hace falta correr "dotnet ef database update" a mano.
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<RuteaYaDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 app.UseExceptionHandler();   // tiene que ir primero en el pipeline
 
 app.UseSwagger();
