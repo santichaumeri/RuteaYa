@@ -1,0 +1,174 @@
+@model CrearViajeViewModel
+@{
+    ViewData["Title"] = "Nuevo viaje";
+    var dias = new[]
+    {
+        (1, "Lu", "Lunes"),
+        (2, "Ma", "Martes"),
+        (4, "Mi", "Miércoles"),
+        (8, "Ju", "Jueves"),
+        (16, "Vi", "Viernes"),
+        (32, "Sá", "Sábado"),
+        (64, "Do", "Domingo")
+    };
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-9">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h1 class="h3 mb-1">Nuevo viaje</h1>
+                <p class="text-muted mb-0">Registrá tu recorrido y las paradas intermedias.</p>
+            </div>
+            <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+        <form asp-action="Crear" method="post">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <h2 class="h5 mb-3">Recorrido</h2>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Origen" class="form-label"></label>
+                            <input asp-for="Origen" class="form-control" maxlength="300" />
+                            <span asp-validation-for="Origen" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Destino" class="form-label"></label>
+                            <input asp-for="Destino" class="form-control" maxlength="300" />
+                            <span asp-validation-for="Destino" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <h2 class="h5 mb-3">Días y horarios</h2>
+                    <fieldset>
+                        <legend class="form-label fs-6">Días de la semana</legend>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var dia in dias)
+                            {
+                                var id = $"dia-{dia.Item1}";
+                                <div>
+                                    <input class="btn-check"
+                                           type="checkbox"
+                                           name="DiasSeleccionados"
+                                           id="@id"
+                                           value="@((int)dia.Item1)"
+                                           checked="@(Model.DiasSeleccionados.Contains(dia.Item1) ? "checked" : null)" />
+                                    <label class="btn btn-outline-primary" for="@id" title="@dia.Item3">@dia.Item2</label>
+                                </div>
+                            }
+                        </div>
+                        <span asp-validation-for="DiasSeleccionados" class="text-danger"></span>
+                    </fieldset>
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-6">
+                            <label asp-for="HoraSalida" class="form-label"></label>
+                            <input asp-for="HoraSalida" type="time" class="form-control" />
+                            <span asp-validation-for="HoraSalida" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="HoraLlegada" class="form-label"></label>
+                            <input asp-for="HoraLlegada" type="time" class="form-control" />
+                            <span asp-validation-for="HoraLlegada" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <h2 class="h5 mb-3">Capacidad y desvío</h2>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="MaxPaquetes" class="form-label"></label>
+                            <input asp-for="MaxPaquetes" class="form-control" min="1" />
+                            <span asp-validation-for="MaxPaquetes" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="PesoMaximoKg" class="form-label"></label>
+                            <input asp-for="PesoMaximoKg" class="form-control" min="0.01" step="0.01" />
+                            <span asp-validation-for="PesoMaximoKg" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="DesvioMaximoKm" class="form-label"></label>
+                            <input asp-for="DesvioMaximoKm" class="form-control" min="0.01" step="0.01" />
+                            <span asp-validation-for="DesvioMaximoKm" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <h2 class="h5 mb-1">Paradas intermedias</h2>
+                            <p class="text-muted small mb-0">Opcional. Se guardarán en el orden mostrado.</p>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary" id="agregar-parada">Agregar parada</button>
+                    </div>
+
+                    <div id="paradas-container">
+                        @for (var indice = 0; indice < Model.Paradas.Count; indice++)
+                        {
+                            <div class="input-group mb-2 parada-item">
+                                <span class="input-group-text">@(indice + 1)</span>
+                                <input name="Paradas" value="@Model.Paradas[indice]" class="form-control" maxlength="300" placeholder="Dirección de la parada" />
+                                <button type="button" class="btn btn-outline-danger quitar-parada">Quitar</button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-controller="Dashboard" asp-action="Index" class="btn btn-light">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Guardar viaje</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const container = document.getElementById('paradas-container');
+            const addButton = document.getElementById('agregar-parada');
+
+            function actualizarOrden() {
+                container.querySelectorAll('.parada-item').forEach((item, index) => {
+                    item.querySelector('.input-group-text').textContent = index + 1;
+                });
+            }
+
+            function agregarParada(valor = '') {
+                const item = document.createElement('div');
+                item.className = 'input-group mb-2 parada-item';
+                item.innerHTML = `
+                    <span class="input-group-text"></span>
+                    <input name="Paradas" value="${valor.replaceAll('"', '&quot;')}" class="form-control" maxlength="300" placeholder="Dirección de la parada" />
+                    <button type="button" class="btn btn-outline-danger quitar-parada">Quitar</button>`;
+                container.appendChild(item);
+                actualizarOrden();
+            }
+
+            addButton.addEventListener('click', () => agregarParada());
+            container.addEventListener('click', event => {
+                if (!event.target.classList.contains('quitar-parada')) {
+                    return;
+                }
+
+                event.target.closest('.parada-item').remove();
+                actualizarOrden();
+            });
+        })();
+    </script>
+}

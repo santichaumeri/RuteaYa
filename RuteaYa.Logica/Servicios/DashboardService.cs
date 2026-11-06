@@ -22,20 +22,31 @@ public sealed class DashboardService(RuteaYaDbContext dbContext) : IDashboardSer
             return null;
         }
 
-        var viajes = await dbContext.Viajes
+        var viajesData = await dbContext.Viajes
             .AsNoTracking()
             .Where(x => x.UsuarioId == usuarioId && x.Estado == EstadoViaje.Activo)
             .OrderBy(x => x.HoraSalida)
             .Take(5)
-            .Select(x => new ViajeResumenDto
+            .Select(x => new
             {
                 Id = x.Id,
                 Ruta = $"{x.Origen} → {x.Destino}",
-                Dias = x.DiasSemana.ToString(),
+                x.DiasSemana,
                 Horario = $"{x.HoraSalida:HH\\:mm} – {x.HoraLlegada:HH\\:mm}",
                 Estado = x.Estado.ToString()
             })
             .ToListAsync(cancellationToken);
+
+        var viajes = viajesData
+            .Select(x => new ViajeResumenDto
+            {
+                Id = x.Id,
+                Ruta = x.Ruta,
+                Dias = FormatearDias(x.DiasSemana),
+                Horario = x.Horario,
+                Estado = x.Estado
+            })
+            .ToList();
 
         var envios = await dbContext.Envios
             .AsNoTracking()
@@ -70,6 +81,33 @@ public sealed class DashboardService(RuteaYaDbContext dbContext) : IDashboardSer
             PotencialMes = 0,
             Viajes = viajes,
             Envios = envios
+        };
+    }
+
+    private static string FormatearDias(DiasSemana dias)
+    {
+        var nombres = new[]
+        {
+            (DiasSemana.Lunes, "Lunes"),
+            (DiasSemana.Martes, "Martes"),
+            (DiasSemana.Miercoles, "Miércoles"),
+            (DiasSemana.Jueves, "Jueves"),
+            (DiasSemana.Viernes, "Viernes"),
+            (DiasSemana.Sabado, "Sábado"),
+            (DiasSemana.Domingo, "Domingo")
+        };
+
+        var seleccionados = nombres
+            .Where(x => dias.HasFlag(x.Item1))
+            .Select(x => x.Item2)
+            .ToList();
+
+        return seleccionados.Count switch
+        {
+            0 => "Sin días",
+            1 => seleccionados[0],
+            2 => $"{seleccionados[0]} y {seleccionados[1]}",
+            _ => $"{string.Join(", ", seleccionados[..^1])} y {seleccionados[^1]}"
         };
     }
 }

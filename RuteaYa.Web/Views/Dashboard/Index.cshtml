@@ -42,9 +42,16 @@
                 </div>
                 <div class="quick-actions">
                     <a class="button button-light" asp-controller="Envios" asp-action="Create">Nuevo envío</a>
-                    <a class="button button-dark" asp-controller="Viajes" asp-action="Create">Nuevo viaje</a>
+                    <a class="button button-dark" asp-controller="Viajes" asp-action="Crear">Nuevo viaje</a>
                 </div>
             </header>
+
+            @if (TempData["MensajeViaje"] is string mensajeViaje)
+            {
+                <div class="alert alert-success mb-3" role="alert">
+                    @mensajeViaje
+                </div>
+            }
 
             <section class="summary-grid" aria-label="Resumen">
                 <article class="summary-card">
