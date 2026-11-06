@@ -1,3 +1,5 @@
+using RuteaYa.Entidades.Enums;
+
 namespace RuteaYa.Logica.Excepciones;
 
 /// <summary>Datos inválidos. La API responde 400.</summary>
@@ -28,4 +30,16 @@ public class NotFoundException : Exception
 public class ConflictException : Exception
 {
     public ConflictException(string mensaje) : base(mensaje) { }
+}
+
+public class TransicionEstadoInvalidaException : InvalidOperationException
+{
+    public EstadoEnvio EstadoActual { get; }
+    public EstadoEnvio EstadoNuevo { get; }
+
+    public TransicionEstadoInvalidaException(EstadoEnvio EstadoActual, EstadoEnvio EstadoNuevo) : base($"No está permitida la transición de estado {EstadoActual} a {EstadoNuevo}.")
+    {
+        this.EstadoActual = EstadoActual;
+        this.EstadoNuevo = EstadoNuevo;
+    }
 }

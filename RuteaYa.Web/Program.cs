@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using RuteaYa.Logica.Servicios;
 using RuteaYa.Web.Servicios;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +31,8 @@ builder.Services
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
     });
+
+builder.Services.AddSingleton<IEstadoEnvioService, EstadoEnvioService>();
 
 var app = builder.Build();
 
