@@ -2,6 +2,7 @@
 using RuteaYa.Entidades;
 using RuteaYa.Entidades.Enums;
 using RuteaYa.Logica.Data;
+using RuteaYa.Logica.Dtos.Envios;
 using RuteaYa.Logica.Excepciones;
 using RuteaYa.Logica.Servicios;
 using System;
@@ -169,5 +170,153 @@ public class EnvioServiceTest
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
             envioService.CancelarEnvioAsync(20, usuarioActualId));
+    }
+
+    [Fact]
+    public async Task CrearEnvioAsync_DatosValidos_DebeCrearEnvioConEstadoBuscandoConductor()
+    {
+        
+        using var context = CrearContextoEnMemoria();
+        var estadoService = new EstadoEnvioService();
+        var envioService = new EnvioService(context, estadoService);
+
+        int usuarioId = 10;
+        var dto = new CrearEnvioDto
+        {
+            Origen = "Ituzaingó",
+            Destino = "Morón",
+            Fecha = DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
+            PesoKg = 4.5m,
+            Tamano = TamanoPaquete.Mediano,
+            Descripcion = "Caja con repuestos mecánicos",
+            MontoOfrecido = 3500m
+        };
+
+        
+        var resultado = await envioService.CrearEnvioAsync(dto, usuarioId);
+
+        Assert.NotNull(resultado);
+        Assert.True(resultado.Id > 0);
+        Assert.Equal("Ituzaingó", resultado.Origen);
+        Assert.Equal("Morón", resultado.Destino);
+        Assert.Equal(EstadoEnvio.BuscandoConductor, resultado.Estado);
+
+        
+        var envioEnDb = await context.Envios.FindAsync(resultado.Id);
+        Assert.NotNull(envioEnDb);
+        Assert.Equal(usuarioId, envioEnDb.UsuarioId);
+        Assert.Equal(EstadoEnvio.BuscandoConductor, envioEnDb.Estado);
+
+    }
+
+    [Theory]
+    [InlineData("Morón", "Morón")]
+    [InlineData("Ituzaingó", "ituzaingó")]
+    [InlineData("  Haedo ", "haedo")]
+    public async Task CrearEnvioAsync_OrigenYDestinoIguales_DebeLanzarArgumentException(string origen, string destino)
+    {
+        
+        using var context = CrearContextoEnMemoria();
+        var estadoService = new EstadoEnvioService();
+        var envioService = new EnvioService(context, estadoService);
+
+        var dto = new CrearEnvioDto
+        {
+            Origen = origen,
+            Destino = destino,
+            Fecha = DateOnly.FromDateTime(DateTime.Today),
+            PesoKg = 2m,
+            Tamano = TamanoPaquete.Pequeno,
+            Descripcion = "Documentación",
+            MontoOfrecido = 1000m
+        };
+
+        
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            envioService.CrearEnvioAsync(dto, usuarioId: 1)
+        );
+        Assert.Equal("El origen y el destino no pueden ser iguales.", ex.Message);
+    }
+
+    [Fact]
+    public async Task CrearEnvioAsync_FechaAnteriorAHoy_DebeLanzarArgumentException()
+    {
+        
+        using var context = CrearContextoEnMemoria();
+        var estadoService = new EstadoEnvioService();
+        var envioService = new EnvioService(context, estadoService);
+
+        var dto = new CrearEnvioDto
+        {
+            Origen = "Ituzaingó",
+            Destino = "Castelar",
+            Fecha = DateOnly.FromDateTime(DateTime.Today.AddDays(-1)), // Ayer
+            PesoKg = 1m,
+            Tamano = TamanoPaquete.Pequeno,
+            Descripcion = "Sobre",
+            MontoOfrecido = 1500m
+        };
+
+        
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            envioService.CrearEnvioAsync(dto, usuarioId: 1)
+        );
+        Assert.Equal("La fecha no puede ser anterior a la actual.", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-2.5)]
+    public async Task CrearEnvioAsync_PesoInvalido_DebeLanzarArgumentException(decimal pesoInvalido)
+    {
+        // Arrange
+        using var context = CrearContextoEnMemoria();
+        var estadoService = new EstadoEnvioService();
+        var envioService = new EnvioService(context, estadoService);
+
+        var dto = new CrearEnvioDto
+        {
+            Origen = "Ituzaingó",
+            Destino = "Castelar",
+            Fecha = DateOnly.FromDateTime(DateTime.Today),
+            PesoKg = pesoInvalido,
+            Tamano = TamanoPaquete.Pequeno,
+            Descripcion = "Paquete liviano",
+            MontoOfrecido = 1500m
+        };
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            envioService.CrearEnvioAsync(dto, usuarioId: 1)
+        );
+        Assert.Equal("El peso debe ser mayor a 0.", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-500)]
+    public async Task CrearEnvioAsync_MontoOfrecidoInvalido_DebeLanzarArgumentException(decimal montoInvalido)
+    {
+        // Arrange
+        using var context = CrearContextoEnMemoria();
+        var estadoService = new EstadoEnvioService();
+        var envioService = new EnvioService(context, estadoService);
+
+        var dto = new CrearEnvioDto
+        {
+            Origen = "Ituzaingó",
+            Destino = "Castelar",
+            Fecha = DateOnly.FromDateTime(DateTime.Today),
+            PesoKg = 2m,
+            Tamano = TamanoPaquete.Pequeno,
+            Descripcion = "Paquete",
+            MontoOfrecido = montoInvalido
+        };
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            envioService.CrearEnvioAsync(dto, usuarioId: 1)
+        );
+        Assert.Equal("El monto ofrecido debe ser mayor a 0.", ex.Message);
     }
 }

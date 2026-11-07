@@ -12,6 +12,15 @@ using RuteaYa.Logica.Servicios;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Falta configurar ConnectionStrings:DefaultConnection en appsettings.json.");
+
+builder.Services.AddDbContext<RuteaYaDbContext>(options =>
+    options.UseSqlServer(
+        connectionString,
+        sql => sql.MigrationsAssembly("RuteaYa.Logica")));
+
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Falta configurar Jwt:Key.");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"]
@@ -36,17 +45,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
-builder.Services.AddScoped<IDashboardService, DashboardService>();
-builder.Services.AddScoped<IViajeService, ViajeService>();
-
-builder.Services.AddDbContext<RuteaYaDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        sql => sql.MigrationsAssembly("RuteaYa.Logica")));
 
 // Servicios de negocio (viven en RuteaYa.Logica). Los controllers los reciben por inyección.
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IViajeService, ViajeService>();
+
+// REGISTROS DE ENVÍOS (HU-07, HU-08, HU-09)
+builder.Services.AddScoped<IEstadoEnvioService, EstadoEnvioService>();
+builder.Services.AddScoped<IEnvioService, EnvioService>();
 
 // Manejo global de errores (400, 401, 403, 404, 409, 500)
 builder.Services.AddProblemDetails();

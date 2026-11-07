@@ -49,9 +49,6 @@ builder.Services
         options.SlidingExpiration = true;
     });
 
-builder.Services.AddSingleton<IEstadoEnvioService, EstadoEnvioService>();
-builder.Services.AddScoped<IEnvioService, EnvioService>();
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
