@@ -33,6 +33,7 @@ builder.Services
     });
 
 builder.Services.AddSingleton<IEstadoEnvioService, EstadoEnvioService>();
+builder.Services.AddScoped<IEnvioService, EnvioService>();
 
 var app = builder.Build();
 
