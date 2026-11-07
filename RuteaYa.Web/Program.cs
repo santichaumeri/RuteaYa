@@ -5,11 +5,28 @@ using RuteaYa.Web.Servicios;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    var mensajes = options.ModelBindingMessageProvider;
+
+    mensajes.SetValueMustNotBeNullAccessor(
+        campo => $"El campo {campo} es obligatorio.");
+    mensajes.SetValueMustBeANumberAccessor(
+        campo => $"El valor ingresado no es válido para {campo}.");
+    mensajes.SetAttemptedValueIsInvalidAccessor(
+        (valor, campo) => $"El valor '{valor}' no es válido para {campo}.");
+});
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient<DashboardApiClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"]!);
+});
+
+builder.Services.AddHttpClient<IViajesApiClient, ViajesApiClient>(client =>
+{
+    var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
+        ?? throw new InvalidOperationException("Falta la configuración ApiBaseUrl.");
+    client.BaseAddress = new Uri(apiBaseUrl);
 });
 
 // Cliente HTTP tipado hacia la API. La URL base sale de "ApiBaseUrl" en appsettings.json.
