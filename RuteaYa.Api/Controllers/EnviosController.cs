@@ -22,6 +22,33 @@ public class EnviosController : ControllerBase
     }
 
     /// <summary>
+    /// Publica un nuevo paquete para ser transportado.
+    /// </summary>
+    [HttpPost]
+    [ProducesResponseType(typeof(EnvioDetalleDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Crear([FromBody] CrearEnvioDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var usuarioId = ObtenerUsuarioIdAutenticado();
+
+        try
+        {
+            var nuevoEnvio = await _envioService.CrearEnvioAsync(dto, usuarioId);
+            return CreatedAtAction(nameof(ObtenerPorId), new { id = nuevoEnvio.Id }, nuevoEnvio);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Lista los envíos del usuario autenticado, con filtro opcional por estado.
     /// </summary>
 
