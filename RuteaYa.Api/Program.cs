@@ -7,6 +7,7 @@ using RuteaYa.Api.Middleware;
 using RuteaYa.Entidades;
 using RuteaYa.Api.Services.Auth;
 using RuteaYa.Logica.Data;
+using RuteaYa.Logica.Optimizacion;
 using RuteaYa.Logica.Servicios;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -55,6 +56,10 @@ builder.Services.AddScoped<IViajeService, ViajeService>();
 // REGISTROS DE ENVÍOS (HU-07, HU-08, HU-09)
 builder.Services.AddScoped<IEstadoEnvioService, EstadoEnvioService>();
 builder.Services.AddScoped<IEnvioService, EnvioService>();
+
+// OPTIMIZADOR (HU-13). El algoritmo no tiene estado, por eso es singleton.
+builder.Services.AddSingleton<IOptimizadorEnvios, OptimizadorEnvios>();
+builder.Services.AddScoped<IOptimizacionService, OptimizacionService>();
 
 // Manejo global de errores (400, 401, 403, 404, 409, 500)
 builder.Services.AddProblemDetails();
