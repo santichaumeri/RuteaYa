@@ -87,7 +87,7 @@
                         <div class="dashboard-list">
                             @foreach (var viaje in Model.Viajes)
                             {
-                                <a class="dashboard-list-item" asp-controller="Viajes" asp-action="Details" asp-route-id="@viaje.Id">
+                                <a class="dashboard-list-item" asp-controller="Viajes" asp-action="Detalle" asp-route-id="@viaje.Id">
                                     <span>
                                         <strong>@viaje.Ruta</strong>
                                         <small>@viaje.Dias · @viaje.Horario</small>
