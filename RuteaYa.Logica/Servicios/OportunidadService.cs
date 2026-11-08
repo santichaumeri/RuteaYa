@@ -27,7 +27,47 @@ public sealed class OportunidadService(
         CancellationToken cancellationToken)
     {
         var viaje = await ObtenerViajePropioAsync(viajeId, usuarioId, cancellationToken);
+        var (oportunidades, _) = await BuscarCompatiblesAsync(viaje, usuarioId, cancellationToken);
 
+        return Ordenar(oportunidades, orden);
+    }
+
+    public async Task<CandidatosViaje> ObtenerCandidatosPorFechaAsync(
+        int viajeId,
+        int usuarioId,
+        CancellationToken cancellationToken)
+    {
+        var viaje = await ObtenerViajePropioAsync(viajeId, usuarioId, cancellationToken);
+        var (oportunidades, ocupacion) = await BuscarCompatiblesAsync(viaje, usuarioId, cancellationToken);
+
+        var capacidadCompleta = CapacidadCompleta(viaje);
+        var porFecha = oportunidades
+            .GroupBy(oportunidad => oportunidad.Fecha)
+            .OrderBy(grupo => grupo.Key)
+            .Select(grupo => new CandidatosFecha(
+                grupo.Key,
+                ocupacion.GetValueOrDefault(grupo.Key, capacidadCompleta),
+                Ordenar(grupo, OrdenOportunidades.Ganancia)))
+            .ToList();
+
+        return new CandidatosViaje(
+            viaje.Id,
+            viaje.Origen,
+            viaje.Destino,
+            capacidadCompleta,
+            porFecha,
+            ocupacion);
+    }
+
+    /// <summary>
+    /// Envíos compatibles con el viaje en cualquiera de sus fechas futuras, junto con lo que ya tiene
+    /// ocupado el viaje en cada fecha. Lo comparten la búsqueda (HU-11) y el optimizador del viaje (HU-14).
+    /// </summary>
+    private async Task<(List<OportunidadResponse> Oportunidades, IReadOnlyDictionary<DateOnly, CapacidadDisponible> Ocupacion)> BuscarCompatiblesAsync(
+        Viaje viaje,
+        int usuarioId,
+        CancellationToken cancellationToken)
+    {
         if (viaje.Estado != EstadoViaje.Activo)
         {
             throw new ConflictException("El viaje está inactivo. Activalo para buscar oportunidades.");
@@ -57,7 +97,7 @@ public sealed class OportunidadService(
             }
         }
 
-        return Ordenar(oportunidades, orden);
+        return (oportunidades, ocupacion);
     }
 
     public async Task<OportunidadDetalleResponse> ObtenerDetalleAsync(
@@ -98,9 +138,7 @@ public sealed class OportunidadService(
         DateOnly hoy,
         CancellationToken cancellationToken)
     {
-        var capacidad = ocupacion.GetValueOrDefault(
-            envio.Fecha,
-            new CapacidadDisponible(viaje.MaxPaquetes, viaje.PesoMaximoKg, viaje.DesvioMaximoKm));
+        var capacidad = ocupacion.GetValueOrDefault(envio.Fecha, CapacidadCompleta(viaje));
 
         var motivos = ReglasCompatibilidad.MotivosSinRuta(viaje, envio, conductorId, capacidad, hoy);
 
@@ -178,6 +216,9 @@ public sealed class OportunidadService(
             .AsNoTracking()
             .SingleOrDefaultAsync(x => x.Id == envioId, cancellationToken)
         ?? throw new NotFoundException("El envío no existe.");
+
+    private static CapacidadDisponible CapacidadCompleta(Viaje viaje) =>
+        new(viaje.MaxPaquetes, viaje.PesoMaximoKg, viaje.DesvioMaximoKm);
 
     private DateOnly Hoy() => DateOnly.FromDateTime(reloj.GetLocalNow().DateTime);
 

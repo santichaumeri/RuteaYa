@@ -1,4 +1,5 @@
 using RuteaYa.Logica.Dtos.Oportunidades;
+using RuteaYa.Logica.Oportunidades;
 
 namespace RuteaYa.Logica.Servicios;
 
@@ -9,6 +10,15 @@ public interface IOportunidadService
         int viajeId,
         int usuarioId,
         OrdenOportunidades orden,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Envíos compatibles agrupados por fecha, con la capacidad que le queda al viaje en cada una.
+    /// Es la entrada del optimizador del viaje (HU-14): cada fecha se optimiza por separado.
+    /// </summary>
+    Task<CandidatosViaje> ObtenerCandidatosPorFechaAsync(
+        int viajeId,
+        int usuarioId,
         CancellationToken cancellationToken);
 
     /// <summary>Métricas de un envío para un viaje y si todavía se puede aceptar (HU-12).</summary>

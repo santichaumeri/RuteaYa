@@ -14,7 +14,13 @@
             </div>
             @if (Model.Viaje is not null)
             {
-                <a asp-controller="Viajes" asp-action="Detalle" asp-route-id="@Model.Viaje.Id" class="btn btn-outline-secondary">Volver al viaje</a>
+                <div class="d-flex gap-2">
+                    @if (Model.Oportunidades.Count > 0)
+                    {
+                        <a asp-controller="Optimizador" asp-action="Index" asp-route-viajeId="@Model.Viaje.Id" class="btn btn-success">Optimizar combinación</a>
+                    }
+                    <a asp-controller="Viajes" asp-action="Detalle" asp-route-id="@Model.Viaje.Id" class="btn btn-outline-secondary">Volver al viaje</a>
+                </div>
             }
             else
             {
@@ -22,44 +28,7 @@
             }
         </div>
 
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-body p-4">
-                @if (Model.MisViajes.Count == 0 && Model.Viaje is null)
-                {
-                    <p class="text-muted mb-0">
-                        No tenés viajes activos. <a asp-controller="Viajes" asp-action="Crear">Registrá un viaje</a> para buscar oportunidades.
-                    </p>
-                }
-                else
-                {
-                    <label for="viaje" class="form-label">Viaje</label>
-                    <select id="viaje" class="form-select" onchange="if (this.value) location.href = this.value;">
-                        @if (Model.Viaje is null)
-                        {
-                            <option value="" selected>Seleccioná un viaje…</option>
-                        }
-                        @foreach (var viaje in Model.MisViajes)
-                        {
-                            <option value="@Url.Action("Index", new { viajeId = viaje.Id })" selected="@(Model.Viaje?.Id == viaje.Id)">
-                                @viaje.Ruta · @viaje.Dias · @viaje.Horario
-                            </option>
-                        }
-                        @if (Model.Viaje is not null && Model.MisViajes.All(viaje => viaje.Id != Model.Viaje.Id))
-                        {
-                            <option selected>@Model.Viaje.Origen → @Model.Viaje.Destino</option>
-                        }
-                    </select>
-                    <noscript>
-                        <ul class="mt-2 mb-0">
-                            @foreach (var viaje in Model.MisViajes)
-                            {
-                                <li><a asp-action="Index" asp-route-viajeId="@viaje.Id">@viaje.Ruta · @viaje.Dias</a></li>
-                            }
-                        </ul>
-                    </noscript>
-                }
-            </div>
-        </div>
+        <partial name="_SelectorViaje" model="@(new SelectorViajeViewModel(Model.MisViajes, Model.Viaje?.Id, Model.Viaje is null ? null : $"{Model.Viaje.Origen} → {Model.Viaje.Destino}", "Oportunidades"))" />
 
         @if (Model.Viaje is not null)
         {
