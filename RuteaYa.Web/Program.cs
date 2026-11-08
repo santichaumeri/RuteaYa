@@ -49,6 +49,13 @@ builder.Services
         options.SlidingExpiration = true;
     });
 
+builder.Services.AddHttpClient<IEnviosApiClient, EnviosApiClient>(client =>
+{
+    var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
+        ?? throw new InvalidOperationException("Falta la configuración ApiBaseUrl.");
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
