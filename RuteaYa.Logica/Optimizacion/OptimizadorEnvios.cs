@@ -1,10 +1,11 @@
-using System.Globalization;
+﻿using System.Globalization;
 using RuteaYa.Logica.Excepciones;
+using RuteaYa.Logica.Optimizacion.Criterios;
 
 namespace RuteaYa.Logica.Optimizacion;
 
 /// <summary>
-/// Elige la combinación de envíos que maximiza la ganancia del conductor respetando
+/// Elige la mejor combinación de envíos según un criterio (por defecto, máxima ganancia) respetando
 /// cantidad máxima de paquetes, peso máximo y desvío máximo del viaje.
 /// </summary>
 /// <remarks>
@@ -18,8 +19,10 @@ namespace RuteaYa.Logica.Optimizacion;
 /// Complejidad en el peor caso: la suma de C(n, i) para i = 1..MaxPaquetes. Para los volúmenes de un viaje
 /// (decenas de candidatos y pocos paquetes) se resuelve en milisegundos y, a diferencia de una heurística,
 /// garantiza el óptimo.
-/// Preferencia entre combinaciones: mayor ganancia; si empatan, menor desvío (regla del enunciado);
-/// después menos paquetes, menos peso y, por último, los ids, para que el resultado sea determinístico.
+/// Qué combinación es mejor lo decide un <see cref="ICriterioOptimizacion"/> (patrón Strategy, HU-15).
+/// Como la búsqueda recorre todas las combinaciones válidas, cualquier criterio obtiene su óptimo exacto.
+/// El criterio por defecto es <see cref="CriterioMaximizarGanancias"/>: mayor ganancia y, si empatan,
+/// menor desvío (regla del enunciado).
 /// El desvío de una combinación es la suma de los desvíos de sus envíos (criterio del ejemplo del enunciado).
 /// </remarks>
 public sealed class OptimizadorEnvios : IOptimizadorEnvios
@@ -31,13 +34,15 @@ public sealed class OptimizadorEnvios : IOptimizadorEnvios
 
     public ResultadoOptimizacion Optimizar(
         IReadOnlyCollection<CandidatoEnvio> candidatos,
-        RestriccionesViaje restricciones)
+        RestriccionesViaje restricciones,
+        ICriterioOptimizacion? criterio = null)
     {
         Validar(candidatos, restricciones);
 
         var busqueda = new Busqueda(
             candidatos.OrderBy(c => c.EnvioId).ToArray(),
-            restricciones);
+            restricciones,
+            (criterio ?? CriterioMaximizarGanancias.Instancia).Comparar);
         busqueda.Explorar(desde: 0, pesoKg: 0m, desvioKm: 0m);
 
         return new ResultadoOptimizacion
@@ -106,39 +111,11 @@ public sealed class OptimizadorEnvios : IOptimizadorEnvios
         }
     }
 
-    /// <summary>Negativo si <paramref name="a"/> es preferible a <paramref name="b"/>.</summary>
-    private static int CompararPorPreferencia(Combinacion a, Combinacion b)
-    {
-        var resultado = b.GananciaTotal.CompareTo(a.GananciaTotal);
-        if (resultado != 0) return resultado;
-
-        resultado = a.DesvioTotalKm.CompareTo(b.DesvioTotalKm);
-        if (resultado != 0) return resultado;
-
-        resultado = a.CantidadPaquetes.CompareTo(b.CantidadPaquetes);
-        if (resultado != 0) return resultado;
-
-        resultado = a.PesoTotalKg.CompareTo(b.PesoTotalKg);
-        if (resultado != 0) return resultado;
-
-        return CompararIds(a, b);
-    }
-
+    /// <summary>Las descartadas se muestran de mayor a menor ganancia, sea cual sea el criterio.</summary>
     private static int CompararDescartadas(Combinacion a, Combinacion b)
     {
         var resultado = b.GananciaTotal.CompareTo(a.GananciaTotal);
-        return resultado != 0 ? resultado : CompararIds(a, b);
-    }
-
-    private static int CompararIds(Combinacion a, Combinacion b)
-    {
-        for (var i = 0; i < Math.Min(a.CantidadPaquetes, b.CantidadPaquetes); i++)
-        {
-            var resultado = a.Envios[i].EnvioId.CompareTo(b.Envios[i].EnvioId);
-            if (resultado != 0) return resultado;
-        }
-
-        return a.CantidadPaquetes.CompareTo(b.CantidadPaquetes);
+        return resultado != 0 ? resultado : Desempate.CompararIds(a, b);
     }
 
     /// <summary>Inserta en una lista ordenada y la recorta a <paramref name="maximo"/> elementos.</summary>
@@ -182,7 +159,10 @@ public sealed class OptimizadorEnvios : IOptimizadorEnvios
     }
 
     /// <summary>Estado de una ejecución del backtracking.</summary>
-    private sealed class Busqueda(CandidatoEnvio[] candidatos, RestriccionesViaje restricciones)
+    private sealed class Busqueda(
+        CandidatoEnvio[] candidatos,
+        RestriccionesViaje restricciones,
+        Comparison<Combinacion> compararPorPreferencia)
     {
         private readonly List<CandidatoEnvio> _actual = new(restricciones.MaxPaquetes);
 
@@ -219,7 +199,7 @@ public sealed class OptimizadorEnvios : IOptimizadorEnvios
 
                 if (combinacion.EsValida)
                 {
-                    InsertarAcotado(Validas, combinacion, MaxAlternativas + 1, CompararPorPreferencia);
+                    InsertarAcotado(Validas, combinacion, MaxAlternativas + 1, compararPorPreferencia);
                     Explorar(i + 1, nuevoPeso, nuevoDesvio);
                 }
                 else

@@ -9,6 +9,7 @@ using RuteaYa.Api.Swagger;
 using RuteaYa.Entidades;
 using RuteaYa.Logica.Data;
 using RuteaYa.Logica.Optimizacion;
+using RuteaYa.Logica.Optimizacion.Criterios;
 using RuteaYa.Logica.Servicios;
 using RuteaYa.Logica.Servicios.Rutas;
 using System.Text;
@@ -63,6 +64,13 @@ builder.Services.AddScoped<IEnvioService, EnvioService>();
 // OPTIMIZADOR (HU-13). El algoritmo no tiene estado, por eso es singleton.
 builder.Services.AddSingleton<IOptimizadorEnvios, OptimizadorEnvios>();
 builder.Services.AddScoped<IOptimizacionService, OptimizacionService>();
+
+// CRITERIOS DE OPTIMIZACIÓN (HU-15, patrón Strategy). Un criterio nuevo = una clase + una línea acá.
+builder.Services.AddSingleton<ICriterioOptimizacion>(CriterioMaximizarGanancias.Instancia);
+builder.Services.AddSingleton<ICriterioOptimizacion, CriterioMinimizarDesvios>();
+builder.Services.AddSingleton<ICriterioOptimizacion>(new CriterioEquilibrio(
+    builder.Configuration.GetValue("Optimizacion:Equilibrio:CostoPorKm", CriterioEquilibrio.CostoPorKmPorDefecto)));
+builder.Services.AddSingleton<ICatalogoCriterios, CatalogoCriterios>();
 
 // OPORTUNIDADES (HU-11, HU-12). TimeProvider permite fijar "hoy" en los tests.
 builder.Services.AddSingleton(TimeProvider.System);

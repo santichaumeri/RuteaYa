@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RuteaYa.Logica.Optimizacion.Criterios;
 
 namespace RuteaYa.Logica.Dtos.Optimizacion;
 
@@ -19,6 +20,13 @@ public sealed class OptimizarRequest
     /// <example>5</example>
     [Range(typeof(decimal), "0", "79228162514264337593543950335", ParseLimitsInInvariantCulture = true, ErrorMessage = "El desvío máximo no puede ser negativo.")]
     public decimal DesvioMaximoKm { get; set; }
+
+    /// <summary>
+    /// MaximizarGanancias (por defecto), MinimizarDesvios o Equilibrio.
+    /// Acepta el nombre o el número (1, 2, 3).
+    /// </summary>
+    /// <example>MaximizarGanancias</example>
+    public CriterioOptimizacion Criterio { get; set; } = CriterioOptimizacion.MaximizarGanancias;
 
     [Required(ErrorMessage = "La lista de candidatos es obligatoria.")]
     public List<CandidatoEnvioRequest> Candidatos { get; set; } = [];
