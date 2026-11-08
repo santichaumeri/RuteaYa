@@ -76,6 +76,9 @@ builder.Services.AddSingleton<ICatalogoCriterios, CatalogoCriterios>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IOportunidadService, OportunidadService>();
 
+// OPTIMIZADOR DEL VIAJE (HU-14): oportunidades de una fecha + optimizador + criterio.
+builder.Services.AddScoped<IOptimizacionViajeService, OptimizacionViajeService>();
+
 // Manejo global de errores (400, 401, 403, 404, 409, 500)
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ManejadorGlobalDeExcepciones>();

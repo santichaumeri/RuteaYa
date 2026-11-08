@@ -1,0 +1,40 @@
+@model SelectorViajeViewModel
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-4">
+        @if (Model.MisViajes.Count == 0 && Model.ViajeIdSeleccionado is null)
+        {
+            <p class="text-muted mb-0">
+                No tenés viajes activos. <a asp-controller="Viajes" asp-action="Crear">Registrá un viaje</a> para empezar.
+            </p>
+        }
+        else
+        {
+            <label for="viaje" class="form-label">Viaje</label>
+            <select id="viaje" class="form-select" onchange="if (this.value) location.href = this.value;">
+                @if (Model.ViajeIdSeleccionado is null)
+                {
+                    <option value="" selected>Seleccioná un viaje…</option>
+                }
+                @foreach (var viaje in Model.MisViajes)
+                {
+                    <option value="@Url.Action("Index", Model.Controlador, new { viajeId = viaje.Id })" selected="@(Model.ViajeIdSeleccionado == viaje.Id)">
+                        @viaje.Ruta · @viaje.Dias · @viaje.Horario
+                    </option>
+                }
+                @if (Model.ViajeIdSeleccionado is not null && Model.MisViajes.All(viaje => viaje.Id != Model.ViajeIdSeleccionado))
+                {
+                    <option selected>@Model.TextoViajeSeleccionado</option>
+                }
+            </select>
+            <noscript>
+                <ul class="mt-2 mb-0">
+                    @foreach (var viaje in Model.MisViajes)
+                    {
+                        <li><a asp-controller="@Model.Controlador" asp-action="Index" asp-route-viajeId="@viaje.Id">@viaje.Ruta · @viaje.Dias</a></li>
+                    }
+                </ul>
+            </noscript>
+        }
+    </div>
+</div>

@@ -1,0 +1,255 @@
+@using RuteaYa.Web.Models.Optimizador
+@using RuteaYa.Web.Models.Oportunidades
+@model OptimizadorPaginaViewModel
+@{
+    ViewData["Title"] = "Optimizador";
+    var datos = Model.Datos;
+    var resultado = datos?.Resultado;
+    var mejor = resultado?.MejorCombinacion;
+
+    // Porcentaje para las barras, sin pasarse de 100.
+    static decimal Porcentaje(decimal valor, decimal maximo) =>
+        maximo <= 0 ? 0 : Math.Clamp(valor / maximo * 100m, 0m, 100m);
+
+    string Envios(CombinacionViewModel combinacion) => string.Join(" + ", combinacion.EnvioIds.Select(id =>
+        datos?.Candidato(id) is { } candidato ? $"#{id} {candidato.Origen} → {candidato.Destino}" : $"#{id}"));
+
+    var otras = (resultado?.Alternativas ?? []).Select(c => (Combinacion: c, Descartada: false))
+        .Concat((resultado?.Descartadas ?? []).Select(c => (Combinacion: c, Descartada: true)))
+        .ToList();
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+            <div>
+                <h1 class="h3 mb-1">Optimizador de oportunidades</h1>
+                <p class="text-muted mb-0">Encuentra la combinación de envíos que más te conviene para un viaje.</p>
+            </div>
+            @if (datos is not null)
+            {
+                <a asp-controller="Oportunidades" asp-action="Index" asp-route-viajeId="@datos.ViajeId" class="btn btn-outline-secondary">Volver a oportunidades</a>
+            }
+            else
+            {
+                <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-secondary">Volver</a>
+            }
+        </div>
+
+        <partial name="_SelectorViaje" model="@(new SelectorViajeViewModel(Model.MisViajes, datos?.ViajeId, datos is null ? null : $"{datos.ViajeOrigen} → {datos.ViajeDestino}", "Optimizador"))" />
+
+        @if (Model.Error is not null)
+        {
+            <div class="alert alert-warning">@Model.Error</div>
+        }
+
+        @if (datos is not null)
+        {
+            <form method="get" class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4 row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="fecha" class="form-label">Fecha del viaje</label>
+                        <select id="fecha" name="fecha" class="form-select" disabled="@(datos.FechasConOportunidades.Count == 0)">
+                            @foreach (var fecha in datos.FechasConOportunidades)
+                            {
+                                <option value="@fecha.ToString("yyyy-MM-dd")" selected="@(fecha == datos.Fecha)">@fecha.ToString("dddd dd/MM/yyyy")</option>
+                            }
+                            @if (datos.FechasConOportunidades.Count == 0)
+                            {
+                                <option>Sin fechas con oportunidades</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label for="criterio" class="form-label">Criterio de optimización</label>
+                        <select id="criterio" name="criterio" class="form-select">
+                            @foreach (var (valor, texto) in CriteriosOptimizacion.Todos)
+                            {
+                                <option value="@valor" selected="@(Model.Criterio == valor)">@texto</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-grid">
+                        <button type="submit" class="btn btn-primary">Calcular de nuevo</button>
+                    </div>
+                </div>
+            </form>
+
+            @if (datos.Fecha is null)
+            {
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4 text-center text-muted">
+                        Este viaje no tiene envíos compatibles en ninguna fecha próxima, así que no hay nada para combinar.
+                        <a asp-controller="Oportunidades" asp-action="Index" asp-route-viajeId="@datos.ViajeId">Ver oportunidades</a>.
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+                            <h2 class="h5 mb-0">Uso del viaje el @datos.Fecha.Value.ToString("dddd dd/MM")</h2>
+                            <div class="small text-muted d-flex gap-3">
+                                <span><span class="d-inline-block rounded bg-secondary me-1" style="width:.8rem;height:.8rem"></span>Ya asignado</span>
+                                <span><span class="d-inline-block rounded bg-success me-1" style="width:.8rem;height:.8rem"></span>Combinación recomendada</span>
+                            </div>
+                        </div>
+
+                        @{
+                            var barras = new[]
+                            {
+                                ("Paquetes", (decimal)datos.PaquetesAsignados, (decimal)(mejor?.CantidadPaquetes ?? 0), (decimal)datos.MaxPaquetes, ""),
+                                ("Peso", datos.PesoAsignadoKg, mejor?.PesoTotalKg ?? 0, datos.PesoMaximoKg, " kg"),
+                                ("Desvío", datos.DesvioAsignadoKm, mejor?.DesvioTotalKm ?? 0, datos.DesvioMaximoKm, " km")
+                            };
+                        }
+                        @foreach (var (nombre, asignado, recomendado, maximo, unidad) in barras)
+                        {
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <strong>@nombre</strong>
+                                    <span>@((asignado + recomendado).ToString("0.##"))@unidad de @maximo.ToString("0.##")@unidad</span>
+                                </div>
+                                <div class="progress" style="height: 1.1rem;" role="img" aria-label="@nombre: @((asignado + recomendado).ToString("0.##")) de @maximo.ToString("0.##")">
+                                    <div class="progress-bar bg-secondary" style="width: @Porcentaje(asignado, maximo).ToString(System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                                    <div class="progress-bar bg-success" style="width: @Porcentaje(recomendado, maximo).ToString(System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (mejor is null)
+                {
+                    <div class="alert alert-warning">
+                        <strong>No hay ninguna combinación posible para esa fecha.</strong>
+                        Ningún envío entra en lo que le queda al viaje (paquetes, peso o desvío).
+                        @if (resultado?.Descartadas.Count > 0)
+                        {
+                            <span>Abajo podés ver por qué se descartó cada uno.</span>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="card shadow-sm border-success border-2 mb-4">
+                        <div class="card-body p-4">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+                                <div>
+                                    <span class="badge bg-success mb-2">Combinación recomendada</span>
+                                    <div class="display-6 fw-semibold">@mejor.GananciaTotal.ToString("C0")</div>
+                                    <div class="text-muted">
+                                        @mejor.CantidadPaquetes @(mejor.CantidadPaquetes == 1 ? "envío" : "envíos") ·
+                                        @mejor.PesoTotalKg.ToString("0.##") kg ·
+                                        @mejor.DesvioTotalKm.ToString("0.##") km de desvío
+                                        @if (mejor.GananciaNeta is decimal neta)
+                                        {
+                                            <span>· ganancia neta @neta.ToString("C0")</span>
+                                        }
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-success" disabled title="La confirmación se habilita con HU-17.">
+                                    Confirmar combinación
+                                </button>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Envío</th>
+                                            <th class="text-end">Peso</th>
+                                            <th class="text-end">Desvío</th>
+                                            <th class="text-end">Pago</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var id in mejor.EnvioIds)
+                                        {
+                                            var envio = datos.Candidato(id);
+                                            <tr>
+                                                <td>
+                                                    <strong>@(envio is null ? $"#{id}" : $"{envio.Origen} → {envio.Destino}")</strong>
+                                                    @if (envio is not null)
+                                                    {
+                                                        <div class="small text-muted">@envio.Descripcion · @OportunidadFormato.Tamano(envio.Tamano)</div>
+                                                    }
+                                                </td>
+                                                <td class="text-end text-nowrap">@envio?.PesoKg.ToString("0.##") kg</td>
+                                                <td class="text-end text-nowrap">@envio?.DesvioKm.ToString("0.##") km</td>
+                                                <td class="text-end text-nowrap">@envio?.Pago.ToString("C0")</td>
+                                                <td class="text-end">
+                                                    <a asp-controller="Oportunidades" asp-action="Detalle" asp-route-viajeId="@datos.ViajeId" asp-route-envioId="@id" class="btn btn-sm btn-outline-primary">Ver detalle</a>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @if (resultado is not null)
+                {
+                    <div class="alert alert-light border small">
+                        <strong>Cómo se elige:</strong> @resultado.CriterioDescripcion
+                        Se evaluaron @resultado.CombinacionesEvaluadas combinaciones de @datos.Candidatos.Count envíos compatibles.
+                    </div>
+                }
+
+                @if (otras.Count > 0)
+                {
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body p-4 pb-2">
+                            <h2 class="h5 mb-3">Otras combinaciones</h2>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Envíos</th>
+                                        <th class="text-end">Ganancia</th>
+                                        <th class="text-end">Peso</th>
+                                        <th class="text-end">Desvío</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var (combinacion, descartada) in otras)
+                                    {
+                                        <tr class="@(descartada ? "text-muted" : "")">
+                                            <td class="small">@Envios(combinacion)</td>
+                                            <td class="text-end text-nowrap">
+                                                @combinacion.GananciaTotal.ToString("C0")
+                                                @if (combinacion.GananciaNeta is decimal neta)
+                                                {
+                                                    <div class="small text-muted">neta @neta.ToString("C0")</div>
+                                                }
+                                            </td>
+                                            <td class="text-end text-nowrap">@combinacion.PesoTotalKg.ToString("0.##") kg</td>
+                                            <td class="text-end text-nowrap">@combinacion.DesvioTotalKm.ToString("0.##") km</td>
+                                            <td>
+                                                @if (descartada)
+                                                {
+                                                    <span class="badge bg-danger-subtle text-danger-emphasis">Descartada</span>
+                                                    <div class="small">@string.Join(" ", combinacion.MotivosDescarte)</div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-primary-subtle text-primary-emphasis">Alternativa válida</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            }
+        }
+    </div>
+</div>
