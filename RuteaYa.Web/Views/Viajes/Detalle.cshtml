@@ -21,6 +21,7 @@
                 <p class="text-muted mb-0">Información del recorrido y su configuración.</p>
             </div>
             <div class="d-flex gap-2">
+                <a asp-controller="Oportunidades" asp-action="Index" asp-route-viajeId="@Model.Id" class="btn btn-success">Buscar oportunidades</a>
                 <a asp-action="Editar" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
                 <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-secondary">Volver</a>
             </div>

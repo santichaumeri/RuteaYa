@@ -1,0 +1,154 @@
+@using RuteaYa.Web.Models.Oportunidades
+@model OportunidadesViewModel
+@{
+    ViewData["Title"] = "Oportunidades";
+    var ordenes = new[] { ("Ganancia", "Mayor ganancia"), ("Desvio", "Menor desvío"), ("Compatibilidad", "Más compatibles") };
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+            <div>
+                <h1 class="h3 mb-1">Oportunidades</h1>
+                <p class="text-muted mb-0">Elegí uno de tus viajes para ver los envíos que podés sumar.</p>
+            </div>
+            @if (Model.Viaje is not null)
+            {
+                <a asp-controller="Viajes" asp-action="Detalle" asp-route-id="@Model.Viaje.Id" class="btn btn-outline-secondary">Volver al viaje</a>
+            }
+            else
+            {
+                <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-secondary">Volver</a>
+            }
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                @if (Model.MisViajes.Count == 0 && Model.Viaje is null)
+                {
+                    <p class="text-muted mb-0">
+                        No tenés viajes activos. <a asp-controller="Viajes" asp-action="Crear">Registrá un viaje</a> para buscar oportunidades.
+                    </p>
+                }
+                else
+                {
+                    <label for="viaje" class="form-label">Viaje</label>
+                    <select id="viaje" class="form-select" onchange="if (this.value) location.href = this.value;">
+                        @if (Model.Viaje is null)
+                        {
+                            <option value="" selected>Seleccioná un viaje…</option>
+                        }
+                        @foreach (var viaje in Model.MisViajes)
+                        {
+                            <option value="@Url.Action("Index", new { viajeId = viaje.Id })" selected="@(Model.Viaje?.Id == viaje.Id)">
+                                @viaje.Ruta · @viaje.Dias · @viaje.Horario
+                            </option>
+                        }
+                        @if (Model.Viaje is not null && Model.MisViajes.All(viaje => viaje.Id != Model.Viaje.Id))
+                        {
+                            <option selected>@Model.Viaje.Origen → @Model.Viaje.Destino</option>
+                        }
+                    </select>
+                    <noscript>
+                        <ul class="mt-2 mb-0">
+                            @foreach (var viaje in Model.MisViajes)
+                            {
+                                <li><a asp-action="Index" asp-route-viajeId="@viaje.Id">@viaje.Ruta · @viaje.Dias</a></li>
+                            }
+                        </ul>
+                    </noscript>
+                }
+            </div>
+        </div>
+
+        @if (Model.Viaje is not null)
+        {
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4 d-flex flex-wrap align-items-end justify-content-between gap-3">
+                <dl class="row mb-0 flex-grow-1">
+                    <dt class="col-6 col-md-3">Máx. paquetes</dt>
+                    <dd class="col-6 col-md-3">@Model.Viaje.MaxPaquetes</dd>
+                    <dt class="col-6 col-md-3">Peso máximo</dt>
+                    <dd class="col-6 col-md-3">@Model.Viaje.PesoMaximoKg.ToString("0.##") kg</dd>
+                    <dt class="col-6 col-md-3">Desvío máximo</dt>
+                    <dd class="col-6 col-md-3 mb-0">@Model.Viaje.DesvioMaximoKm.ToString("0.##") km</dd>
+                </dl>
+
+                <form method="get" class="d-flex align-items-center gap-2">
+                    <label for="orden" class="form-label mb-0 text-nowrap">Ordenar por</label>
+                    <select id="orden" name="orden" class="form-select" onchange="this.form.submit()">
+                        @foreach (var (valor, texto) in ordenes)
+                        {
+                            <option value="@valor" selected="@(Model.Orden == valor)">@texto</option>
+                        }
+                    </select>
+                    <noscript><button type="submit" class="btn btn-primary">Aplicar</button></noscript>
+                </form>
+            </div>
+        </div>
+
+        @if (Model.Error is not null)
+        {
+            <div class="alert alert-warning">@Model.Error</div>
+        }
+        else if (Model.Oportunidades.Count == 0)
+        {
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4 text-center text-muted">
+                    No hay envíos compatibles con este viaje por ahora. Probá más tarde o revisá los días, la capacidad y el desvío máximo del viaje.
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="card shadow-sm border-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Ruta del envío</th>
+                                <th>Fecha</th>
+                                <th class="text-end">Peso</th>
+                                <th class="text-end">Desvío</th>
+                                <th class="text-end">Pago</th>
+                                <th>Compatibilidad</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var oportunidad in Model.Oportunidades)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@oportunidad.Origen → @oportunidad.Destino</strong>
+                                        <div class="small text-muted">@oportunidad.Descripcion · @OportunidadFormato.Tamano(oportunidad.Tamano)</div>
+                                    </td>
+                                    <td class="text-nowrap">@oportunidad.Fecha.ToString("ddd dd/MM")</td>
+                                    <td class="text-end text-nowrap">@oportunidad.PesoKg.ToString("0.##") kg</td>
+                                    <td class="text-end text-nowrap">
+                                        @oportunidad.DesvioKm.ToString("0.##") km
+                                        <div class="small text-muted">+@OportunidadFormato.Minutos(oportunidad.TiempoAdicional)</div>
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        <strong>@oportunidad.Pago.ToString("C0")</strong>
+                                        @if (oportunidad.GananciaPorKmAdicional is decimal porKm)
+                                        {
+                                            <div class="small text-muted">@porKm.ToString("C0")/km</div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @OportunidadFormato.ClaseCompatibilidad(oportunidad.NivelCompatibilidad)">@oportunidad.Compatibilidad</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <a asp-action="Detalle" asp-route-viajeId="@Model.Viaje.Id" asp-route-envioId="@oportunidad.EnvioId" class="btn btn-sm btn-outline-primary text-nowrap">Ver detalle</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        }
+    </div>
+</div>

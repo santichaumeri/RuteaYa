@@ -105,17 +105,19 @@ public class MockRoutingService : IRoutingService
         var puntosBase = new List<string>(rutaHabitual.PuntosRecorridos);
 
         // 2. Probar todas las posiciones válidas de inserción de origen y destino del paquete.
-        // Regla: Origen del paquete debe visitarse antes o en el mismo punto que el Destino del paquete.
+        // Reglas del recorrido: el viaje empieza en su origen y termina en su destino (ninguno se mueve),
+        // y el paquete se retira antes de entregarse.
         double menorDistanciaTotal = double.MaxValue;
         List<string> mejorRecorrido = new();
 
         int n = puntosBase.Count;
 
-        // i representa la posición donde se inserta origenPaquete (entre 1 y n)
-        for (int i = 1; i <= n; i++)
+        // i: posición del origen del paquete, entre el origen del viaje y su destino (índices 1..n-1).
+        for (int i = 1; i < n; i++)
         {
-            // j representa la posición donde se inserta destinoPaquete (entre i+1 y n+1)
-            for (int j = i + 1; j <= n + 1; j++)
+            // j: posición del destino del paquete, después del retiro y antes del destino del viaje,
+            // que tras la primera inserción quedó en el índice n.
+            for (int j = i + 1; j <= n; j++)
             {
                 var candidato = new List<string>(puntosBase);
                 candidato.Insert(i, origenPaquete);
@@ -176,7 +178,12 @@ public class MockRoutingService : IRoutingService
             : $"{d.ToLowerInvariant()}-{o.ToLowerInvariant()}";
 
         
-        int hash = Math.Abs(combinada.GetHashCode());
+        // string.GetHashCode() cambia en cada ejecución del proceso; FNV-1a da siempre el mismo valor.
+        uint hash = 2166136261;
+        foreach (var caracter in combinada)
+        {
+            hash = (hash ^ caracter) * 16777619;
+        }
         double km = 3.0 + (hash % 220) / 10.0;
         return Math.Round(km, 2);
     }
