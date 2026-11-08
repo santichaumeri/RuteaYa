@@ -1,13 +1,14 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using RuteaYa.Api.Middleware;
-using RuteaYa.Entidades;
 using RuteaYa.Api.Services.Auth;
+using RuteaYa.Entidades;
 using RuteaYa.Logica.Data;
 using RuteaYa.Logica.Servicios;
+using RuteaYa.Logica.Servicios.Rutas;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -72,6 +73,18 @@ builder.Services.AddSwaggerGen(options =>
         options.IncludeXmlComments(xmlPath);
     }
 });
+
+var mapsApiKey = builder.Configuration["GoogleMaps:ApiKey"];
+if (string.IsNullOrWhiteSpace(mapsApiKey))
+{
+    builder.Services.AddScoped<IRoutingService, MockRoutingService>();
+}
+else
+{
+    // Cuando se implemente el proveedor real:
+    // builder.Services.AddScoped<IRoutingService, GoogleMapsRoutingService>();
+    builder.Services.AddScoped<IRoutingService, MockRoutingService>();
+}
 
 var app = builder.Build();
 
