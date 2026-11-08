@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using RuteaYa.Api.Middleware;
 using RuteaYa.Api.Services.Auth;
+using RuteaYa.Api.Swagger;
 using RuteaYa.Entidades;
 using RuteaYa.Logica.Data;
 using RuteaYa.Logica.Optimizacion;
@@ -77,6 +79,17 @@ builder.Services.AddSwaggerGen(options =>
     {
         options.IncludeXmlComments(xmlPath);
     }
+
+    // Botón "Authorize": se pega el token que devuelve POST api/usuarios/login (sin el prefijo "Bearer").
+    options.AddSecurityDefinition(AutorizacionOperationFilter.Esquema, new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Token JWT obtenido en POST api/usuarios/login."
+    });
+    options.OperationFilter<AutorizacionOperationFilter>();
 });
 
 var mapsApiKey = builder.Configuration["GoogleMaps:ApiKey"];
