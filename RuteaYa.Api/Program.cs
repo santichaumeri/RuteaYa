@@ -64,6 +64,10 @@ builder.Services.AddScoped<IEnvioService, EnvioService>();
 builder.Services.AddSingleton<IOptimizadorEnvios, OptimizadorEnvios>();
 builder.Services.AddScoped<IOptimizacionService, OptimizacionService>();
 
+// OPORTUNIDADES (HU-11, HU-12). TimeProvider permite fijar "hoy" en los tests.
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<IOportunidadService, OportunidadService>();
+
 // Manejo global de errores (400, 401, 403, 404, 409, 500)
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ManejadorGlobalDeExcepciones>();

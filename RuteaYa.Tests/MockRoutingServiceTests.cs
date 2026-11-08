@@ -71,8 +71,9 @@ public class MockRoutingServiceTests
         
         // Viaje: Castelar -> Moron (2.5 km)
         // Paquete: Castelar -> Haedo
-        // Candidato óptimo: Castelar -> Moron -> Haedo (2.5 km + 3.0 km = 5.5 km)
-        // Desvío esperado: 5.5 - 2.5 = 3.0 km
+        // El viaje tiene que terminar en Moron, así que el único orden válido es
+        // Castelar -> Castelar (retiro) -> Haedo (entrega) -> Moron = 0 + 5.0 + 3.0 = 8.0 km
+        // Desvío esperado: 8.0 - 2.5 = 5.5 km
         var origenViaje = "Castelar";
         var paradasViaje = new List<string>();
         var destinoViaje = "Moron";
@@ -85,8 +86,8 @@ public class MockRoutingServiceTests
 
         
         Assert.Equal(2.5, resultado.DistanciaHabitualKm);
-        Assert.True(resultado.DistanciaConEnvioKm >= resultado.DistanciaHabitualKm);
-        Assert.Equal(3.0, resultado.DesvioKm);
+        Assert.Equal(8.0, resultado.DistanciaConEnvioKm);
+        Assert.Equal(5.5, resultado.DesvioKm);
         Assert.True(resultado.TiempoAdicional > TimeSpan.Zero);
 
         // Verificar que el origen del paquete se visite antes o en el mismo punto que el destino
@@ -109,5 +110,27 @@ public class MockRoutingServiceTests
         // Assert
         Assert.True(res1.DistanciaKm >= 3.0 && res1.DistanciaKm <= 25.0);
         Assert.Equal(res1.DistanciaKm, res2.DistanciaKm); // Métrica bidireccional consistente
+    }
+
+    [Fact]
+    public async Task CalcularDesvioAsync_MantieneOrigenYDestinoDelViajeEnLosExtremos()
+    {
+        // Viaje Moron -> Haedo -> CABA; paquete Ramos Mejia -> Ciudadela.
+        var resultado = await _routingService.CalcularDesvioAsync(
+            "Moron", ["Haedo"], "CABA", "Ramos Mejia", "Ciudadela");
+
+        Assert.Equal("Moron", resultado.RecorridoFinal[0]);
+        Assert.Equal("CABA", resultado.RecorridoFinal[^1]);
+        Assert.True(resultado.RecorridoFinal.IndexOf("Haedo") < resultado.RecorridoFinal.IndexOf("CABA"));
+        Assert.True(resultado.RecorridoFinal.IndexOf("Ramos Mejia") < resultado.RecorridoFinal.IndexOf("Ciudadela"));
+    }
+
+    [Fact]
+    public async Task FallbackDeterministico_DevuelveElMismoValorEnCadaEjecucion()
+    {
+        // Valor fijo: si dependiera de string.GetHashCode() cambiaría al reiniciar la aplicación.
+        var resultado = await _routingService.CalcularRutaAsync("Lujan", "Mercedes");
+
+        Assert.Equal(11.2, resultado.DistanciaKm);
     }
 }
