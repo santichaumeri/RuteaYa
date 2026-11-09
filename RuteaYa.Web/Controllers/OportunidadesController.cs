@@ -91,4 +91,29 @@ public sealed class OportunidadesController(
             return StatusCode(ex.StatusCode, ex.Message);
         }
     }
+
+    [HttpPost("/Viajes/{viajeId:int}/Oportunidades/{envioId:int}/Aceptar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Aceptar(int viajeId, int envioId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await oportunidadesApiClient.AceptarAsync(viajeId, envioId, cancellationToken);
+            TempData["Exito"] = "¡Oportunidad aceptada! El envío quedó asignado a tu viaje.";
+            return RedirectToAction(nameof(Index), new { viajeId });
+        }
+        catch (ApiException ex) when (ex.StatusCode == StatusCodes.Status401Unauthorized)
+        {
+            return Challenge();
+        }
+        catch (ApiException ex) when (ex.StatusCode == StatusCodes.Status409Conflict || ex.StatusCode == StatusCodes.Status400BadRequest)
+        {
+            TempData["Error"] = ex.Message;
+            return RedirectToAction(nameof(Detalle), new { viajeId, envioId });
+        }
+        catch (ApiException ex)
+        {
+            return StatusCode(ex.StatusCode, ex.Message);
+        }
+    }
 }
