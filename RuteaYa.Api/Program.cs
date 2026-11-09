@@ -119,6 +119,8 @@ else
     builder.Services.AddScoped<IRoutingService, MockRoutingService>();
 }
 
+builder.Services.AddScoped<IAsignacionService, AsignacionService>();
+
 var app = builder.Build();
 
 // En desarrollo, aplica las migraciones pendientes al iniciar (crea la base si no existe).

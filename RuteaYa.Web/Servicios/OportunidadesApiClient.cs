@@ -16,13 +16,42 @@ public interface IOportunidadesApiClient
         int viajeId,
         int envioId,
         CancellationToken cancellationToken);
+
+    Task AceptarAsync(
+        int viajeId,
+        int envioId,
+        CancellationToken cancellationToken);
 }
+
 
 /// <summary>Cliente de los endpoints api/viajes/{viajeId}/oportunidades (HU-11 y HU-12).</summary>
 public sealed class OportunidadesApiClient(
     HttpClient httpClient,
     IHttpContextAccessor httpContextAccessor) : IOportunidadesApiClient
 {
+    public async Task AceptarAsync(int viajeId, int envioId, CancellationToken cancellationToken)
+    {
+        using var request = CrearRequestAutenticada("api/asignaciones", HttpMethod.Post);
+        request.Content = JsonContent.Create(new { viajeId, envioId });
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await response.EnsureApiSuccessAsync();
+    }
+
+    private HttpRequestMessage CrearRequestAutenticada(string ruta, HttpMethod? metodo = null)
+    {
+        var token = httpContextAccessor.HttpContext?.User.FindFirstValue("access_token");
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            throw new ApiException(StatusCodes.Status401Unauthorized, "La sesión no contiene un token válido.");
+        }
+
+        var request = new HttpRequestMessage(metodo ?? HttpMethod.Get, ruta);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return request;
+    }
+
     public async Task<IReadOnlyList<OportunidadViewModel>> BuscarAsync(
         int viajeId,
         string orden,
