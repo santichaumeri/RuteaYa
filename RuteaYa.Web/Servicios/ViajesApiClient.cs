@@ -11,6 +11,12 @@ public interface IViajesApiClient
         CrearViajeViewModel modelo,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyCollection<ViajeResponseViewModel>> ObtenerMisViajesAsync(
+        int? estado,
+        CancellationToken cancellationToken);
+
+    Task DesactivarViajeAsync(int viajeId, CancellationToken cancellationToken);
+
     Task<ViajeDetalleViewModel> ObtenerDetalleAsync(
         int viajeId,
         CancellationToken cancellationToken);
@@ -92,6 +98,29 @@ public sealed class ViajesApiClient(
         await response.EnsureApiSuccessAsync();
 
         return await LeerDetalleAsync(response, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<ViajeResponseViewModel>> ObtenerMisViajesAsync(
+        int? estado,
+        CancellationToken cancellationToken)
+    {
+        using var request = await CrearRequestAutenticadaAsync(
+            HttpMethod.Get,
+            estado is null ? "api/viajes" : $"api/viajes?estado={estado.Value}");
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await response.EnsureApiSuccessAsync();
+
+        return await response.Content.ReadFromJsonAsync<List<ViajeResponseViewModel>>(cancellationToken)
+            ?? [];
+    }
+
+    public async Task DesactivarViajeAsync(int viajeId, CancellationToken cancellationToken)
+    {
+        using var request = await CrearRequestAutenticadaAsync(
+            HttpMethod.Post,
+            $"api/viajes/{viajeId}/desactivar");
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await response.EnsureApiSuccessAsync();
     }
 
     public async Task<ViajeDetalleViewModel> EditarViajeAsync(

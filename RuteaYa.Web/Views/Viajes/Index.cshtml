@@ -1,0 +1,67 @@
+@using RuteaYa.Entidades.Enums
+@model IReadOnlyCollection<RuteaYa.Web.Servicios.ViajeResponseViewModel>
+@{
+    ViewData["Title"] = "Mis viajes";
+    var filtro = ViewData["Filtro"]?.ToString() ?? "activos";
+}
+
+<h1>Mis viajes</h1>
+
+@if (TempData["MensajeViaje"] is string mensaje)
+{
+    <div class="alert alert-success">@mensaje</div>
+}
+@if (TempData["ErrorViaje"] is string error)
+{
+    <div class="alert alert-danger">@error</div>
+}
+<div asp-validation-summary="All" class="text-danger"></div>
+
+<div class="btn-group mb-3" role="group" aria-label="Filtrar viajes">
+    <a class="btn @(filtro == "activos" ? "btn-primary" : "btn-outline-primary")" asp-action="Index" asp-route-estado="activos">Activos</a>
+    <a class="btn @(filtro == "inactivos" ? "btn-primary" : "btn-outline-primary")" asp-action="Index" asp-route-estado="inactivos">Inactivos</a>
+    <a class="btn @(filtro == "todos" ? "btn-primary" : "btn-outline-primary")" asp-action="Index" asp-route-estado="todos">Todos</a>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">No hay viajes para el filtro seleccionado.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Ruta</th>
+                    <th>Días</th>
+                    <th>Horario</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var viaje in Model)
+            {
+                var activo = viaje.Estado == (int)EstadoViaje.Activo;
+                <tr>
+                    <td>@viaje.Origen → @viaje.Destino</td>
+                    <td>@((DiasSemana)viaje.DiasSemana)</td>
+                    <td>@viaje.HoraSalida.ToString(@"hh\:mm") - @viaje.HoraLlegada.ToString(@"hh\:mm")</td>
+                    <td>@(activo ? "Activo" : "Inactivo")</td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="Detalle" asp-route-id="@viaje.Id">Ver detalle</a>
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="Oportunidades" asp-route-id="@viaje.Id">Oportunidades</a>
+                        @if (activo)
+                        {
+                            <form asp-action="Desactivar" asp-route-id="@viaje.Id" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Desactivar</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

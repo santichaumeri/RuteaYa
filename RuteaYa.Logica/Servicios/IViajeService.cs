@@ -1,4 +1,5 @@
 using RuteaYa.Logica.Dtos;
+using RuteaYa.Entidades.Enums;
 
 namespace RuteaYa.Logica.Servicios;
 
@@ -18,5 +19,15 @@ public interface IViajeService
         int viajeId,
         int usuarioId,
         EditarViajeRequest request,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<ViajeResponse>> ObtenerMisViajesAsync(
+        int usuarioId,
+        EstadoViaje? estado,
+        CancellationToken cancellationToken);
+
+    Task DesactivarViajeAsync(
+        int usuarioId,
+        int viajeId,
         CancellationToken cancellationToken);
 }

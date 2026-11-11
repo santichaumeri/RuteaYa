@@ -86,6 +86,52 @@ public sealed class ViajeService(RuteaYaDbContext dbContext) : IViajeService
         return ADetalleResponse(viaje);
     }
 
+    public async Task<IReadOnlyCollection<ViajeResponse>> ObtenerMisViajesAsync(
+        int usuarioId,
+        EstadoViaje? estado,
+        CancellationToken cancellationToken)
+    {
+        var consulta = dbContext.Viajes
+            .AsNoTracking()
+            .Include(x => x.Paradas)
+            .Where(x => x.UsuarioId == usuarioId);
+
+        if (estado is not null)
+        {
+            consulta = consulta.Where(x => x.Estado == estado.Value);
+        }
+
+        var viajes = await consulta
+            .OrderBy(x => x.Origen)
+            .ThenBy(x => x.Destino)
+            .ThenBy(x => x.HoraSalida)
+            .ToListAsync(cancellationToken);
+
+        return viajes.Select(AResponse).ToList();
+    }
+
+    public async Task DesactivarViajeAsync(
+        int usuarioId,
+        int viajeId,
+        CancellationToken cancellationToken)
+    {
+        var viaje = await dbContext.Viajes
+            .SingleOrDefaultAsync(x => x.Id == viajeId && x.UsuarioId == usuarioId, cancellationToken);
+
+        if (viaje is null)
+        {
+            throw new NotFoundException("El viaje no existe o no pertenece al usuario autenticado.");
+        }
+
+        if (viaje.Estado == EstadoViaje.Inactivo)
+        {
+            throw new ConflictException("El viaje ya está inactivo.");
+        }
+
+        viaje.Estado = EstadoViaje.Inactivo;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<ViajeDetalleResponse> EditarViajeAsync(
         int viajeId,
         int usuarioId,
