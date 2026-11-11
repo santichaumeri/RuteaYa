@@ -12,6 +12,53 @@ namespace RuteaYa.Tests;
 public sealed class ViajeServiceTests
 {
     [Fact]
+    public async Task ObtenerMisViajes_filtra_por_estado_y_aisla_por_usuario()
+    {
+        await using var dbContext = CrearDbContext();
+        dbContext.Viajes.AddRange(
+            new Viaje { Id = 1, UsuarioId = 1, Origen = "A", Destino = "B", Estado = EstadoViaje.Activo },
+            new Viaje { Id = 2, UsuarioId = 1, Origen = "C", Destino = "D", Estado = EstadoViaje.Inactivo },
+            new Viaje { Id = 3, UsuarioId = 2, Origen = "E", Destino = "F", Estado = EstadoViaje.Activo });
+        await dbContext.SaveChangesAsync();
+
+        var service = new ViajeService(dbContext);
+
+        var activos = await service.ObtenerMisViajesAsync(1, EstadoViaje.Activo, CancellationToken.None);
+        var todos = await service.ObtenerMisViajesAsync(1, null, CancellationToken.None);
+
+        var viajeActivo = Assert.Single(activos);
+        Assert.Equal(1, viajeActivo.Id);
+        Assert.Equal(2, todos.Count);
+        Assert.DoesNotContain(todos, viaje => viaje.UsuarioId != 1);
+    }
+
+    [Fact]
+    public async Task DesactivarViaje_cambia_el_estado_si_pertenece_al_usuario()
+    {
+        await using var dbContext = CrearDbContext();
+        dbContext.Viajes.Add(new Viaje { Id = 1, UsuarioId = 1, Estado = EstadoViaje.Activo });
+        await dbContext.SaveChangesAsync();
+
+        await new ViajeService(dbContext).DesactivarViajeAsync(1, 1, CancellationToken.None);
+
+        Assert.Equal(EstadoViaje.Inactivo, (await dbContext.Viajes.SingleAsync()).Estado);
+    }
+
+    [Fact]
+    public async Task DesactivarViaje_rechaza_viaje_ajeno_y_viaje_ya_inactivo()
+    {
+        await using var dbContext = CrearDbContext();
+        dbContext.Viajes.AddRange(
+            new Viaje { Id = 1, UsuarioId = 1, Estado = EstadoViaje.Activo },
+            new Viaje { Id = 2, UsuarioId = 1, Estado = EstadoViaje.Inactivo });
+        await dbContext.SaveChangesAsync();
+        var service = new ViajeService(dbContext);
+
+        await Assert.ThrowsAsync<NotFoundException>(() => service.DesactivarViajeAsync(2, 1, CancellationToken.None));
+        await Assert.ThrowsAsync<ConflictException>(() => service.DesactivarViajeAsync(1, 2, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task CrearViaje_guarda_el_viaje_con_dos_paradas_en_orden_secuencial()
     {
         await using var dbContext = CrearDbContext();

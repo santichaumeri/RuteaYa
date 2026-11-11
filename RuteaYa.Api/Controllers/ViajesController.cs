@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RuteaYa.Entidades.Enums;
 using RuteaYa.Logica.Dtos;
 using RuteaYa.Logica.Servicios;
 
@@ -11,6 +12,22 @@ namespace RuteaYa.Api.Controllers;
 [Route("api/viajes")]
 public sealed class ViajesController(IViajeService viajeService) : ControllerBase
 {
+    [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyCollection<ViajeResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<IReadOnlyCollection<ViajeResponse>>> ObtenerMisViajes(
+        [FromQuery] EstadoViaje? estado,
+        CancellationToken cancellationToken)
+    {
+        var claimUsuarioId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(claimUsuarioId, out var usuarioId))
+        {
+            return Unauthorized();
+        }
+
+        return Ok(await viajeService.ObtenerMisViajesAsync(usuarioId, estado, cancellationToken));
+    }
+
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ViajeDetalleResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -80,5 +97,22 @@ public sealed class ViajesController(IViajeService viajeService) : ControllerBas
             cancellationToken);
 
         return StatusCode(StatusCodes.Status201Created, viaje);
+    }
+
+    [HttpPost("{id:int}/desactivar")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Desactivar(int id, CancellationToken cancellationToken)
+    {
+        var claimUsuarioId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(claimUsuarioId, out var usuarioId))
+        {
+            return Unauthorized();
+        }
+
+        await viajeService.DesactivarViajeAsync(usuarioId, id, cancellationToken);
+        return NoContent();
     }
 }

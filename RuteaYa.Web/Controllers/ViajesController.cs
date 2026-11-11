@@ -9,6 +9,34 @@ namespace RuteaYa.Web.Controllers;
 public sealed class ViajesController(IViajesApiClient viajesApiClient) : Controller
 {
     [HttpGet]
+    public async Task<IActionResult> Index(string estado = "activos", CancellationToken cancellationToken = default)
+    {
+        var filtro = estado.ToLowerInvariant() switch
+        {
+            "inactivos" => (int?)2,
+            "todos" => null,
+            _ => (int?)1
+        };
+
+        try
+        {
+            var viajes = await viajesApiClient.ObtenerMisViajesAsync(filtro, cancellationToken);
+            ViewData["Filtro"] = estado.ToLowerInvariant() switch
+            {
+                "inactivos" => "inactivos",
+                "todos" => "todos",
+                _ => "activos"
+            };
+            return View(viajes);
+        }
+        catch (ApiException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View(Array.Empty<ViajeResponseViewModel>());
+        }
+    }
+
+    [HttpGet]
     public IActionResult Crear()
     {
         return View(new CrearViajeViewModel());
@@ -133,5 +161,22 @@ public sealed class ViajesController(IViajesApiClient viajesApiClient) : Control
                 .Select(parada => parada.Direccion)
                 .ToList()
         };
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Desactivar(int id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await viajesApiClient.DesactivarViajeAsync(id, cancellationToken);
+            TempData["MensajeViaje"] = "Viaje desactivado correctamente.";
+        }
+        catch (ApiException ex)
+        {
+            TempData["ErrorViaje"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 }
