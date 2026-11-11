@@ -1,0 +1,100 @@
+@model ViajeDetalleViewModel
+@{
+    ViewData["Title"] = "Detalle del viaje";
+    var dias = new[]
+    {
+        (1, "Lunes"),
+        (2, "Martes"),
+        (4, "Miércoles"),
+        (8, "Jueves"),
+        (16, "Viernes"),
+        (32, "Sábado"),
+        (64, "Domingo")
+    };
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-9">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h1 class="h3 mb-1">Detalle del viaje</h1>
+                <p class="text-muted mb-0">Información del recorrido y su configuración.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a asp-controller="Oportunidades" asp-action="Index" asp-route-viajeId="@Model.Id" class="btn btn-success">Buscar oportunidades</a>
+                <a asp-action="Editar" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+                <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-secondary">Volver</a>
+            </div>
+        </div>
+
+        @if (TempData["MensajeViaje"] is string mensaje)
+        {
+            <div class="alert alert-success">@mensaje</div>
+        }
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <h2 class="h5 mb-3">Recorrido</h2>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Origen</dt>
+                    <dd class="col-sm-8">@Model.Origen</dd>
+                    <dt class="col-sm-4">Destino</dt>
+                    <dd class="col-sm-8">@Model.Destino</dd>
+                    <dt class="col-sm-4">Estado</dt>
+                    <dd class="col-sm-8">@Model.Estado</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <h2 class="h5 mb-3">Días y horarios</h2>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Días</dt>
+                    <dd class="col-sm-8">
+                        @string.Join(", ", dias.Where(dia => (Model.DiasSemana & dia.Item1) == dia.Item1).Select(dia => dia.Item2))
+                    </dd>
+                    <dt class="col-sm-4">Hora de salida</dt>
+                    <dd class="col-sm-8">@Model.HoraSalida.ToString(@"hh\:mm")</dd>
+                    <dt class="col-sm-4">Hora de llegada</dt>
+                    <dd class="col-sm-8">@Model.HoraLlegada.ToString(@"hh\:mm")</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <h2 class="h5 mb-3">Capacidad y desvío</h2>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Máximo de paquetes</dt>
+                    <dd class="col-sm-8">@Model.MaxPaquetes</dd>
+                    <dt class="col-sm-4">Peso máximo</dt>
+                    <dd class="col-sm-8">@Model.PesoMaximoKg.ToString("0.##") kg</dd>
+                    <dt class="col-sm-4">Desvío máximo</dt>
+                    <dd class="col-sm-8">@Model.DesvioMaximoKm.ToString("0.##") km</dd>
+                    <dt class="col-sm-4">Paquetes asignados</dt>
+                    <dd class="col-sm-8">@Model.CantidadPaquetesAsignados</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <h2 class="h5 mb-3">Paradas intermedias</h2>
+                @if (Model.Paradas.Count == 0)
+                {
+                    <p class="text-muted mb-0">Este viaje no tiene paradas intermedias.</p>
+                }
+                else
+                {
+                    <ol class="mb-0">
+                        @foreach (var parada in Model.Paradas.OrderBy(parada => parada.Orden))
+                        {
+                            <li>@parada.Direccion</li>
+                        }
+                    </ol>
+                }
+            </div>
+        </div>
+    </div>
+</div>

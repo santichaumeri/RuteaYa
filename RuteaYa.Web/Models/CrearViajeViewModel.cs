@@ -29,11 +29,11 @@ public sealed class CrearViajeViewModel
     [Display(Name = "Máximo de paquetes")]
     public int MaxPaquetes { get; set; }
 
-    [Range(typeof(decimal), "0.01", "79228162514264337593543950335", ErrorMessage = "El peso máximo debe ser mayor a cero.")]
+    [Range(typeof(decimal), "0.01", "79228162514264337593543950335", ParseLimitsInInvariantCulture = true, ErrorMessage = "El peso máximo debe ser mayor a cero.")]
     [Display(Name = "Peso máximo (kg)")]
     public decimal PesoMaximoKg { get; set; }
 
-    [Range(typeof(decimal), "0.01", "79228162514264337593543950335", ErrorMessage = "El desvío máximo debe ser mayor a cero.")]
+    [Range(typeof(decimal), "0.01", "79228162514264337593543950335", ParseLimitsInInvariantCulture = true, ErrorMessage = "El desvío máximo debe ser mayor a cero.")]
     [Display(Name = "Desvío máximo (km)")]
     public decimal DesvioMaximoKm { get; set; }
 

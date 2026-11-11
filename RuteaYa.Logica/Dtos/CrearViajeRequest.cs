@@ -22,10 +22,10 @@ public sealed class CrearViajeRequest
     [Range(1, int.MaxValue, ErrorMessage = "La cantidad máxima de paquetes debe ser mayor a cero.")]
     public int MaxPaquetes { get; set; }
 
-    [Range(typeof(decimal), "0.01", "79228162514264337593543950335", ErrorMessage = "El peso máximo debe ser mayor a cero.")]
+    [Range(typeof(decimal), "0.01", "79228162514264337593543950335", ParseLimitsInInvariantCulture = true, ErrorMessage = "El peso máximo debe ser mayor a cero.")]
     public decimal PesoMaximoKg { get; set; }
 
-    [Range(typeof(decimal), "0.01", "79228162514264337593543950335", ErrorMessage = "El desvío máximo debe ser mayor a cero.")]
+    [Range(typeof(decimal), "0.01", "79228162514264337593543950335", ParseLimitsInInvariantCulture = true, ErrorMessage = "El desvío máximo debe ser mayor a cero.")]
     public decimal DesvioMaximoKm { get; set; }
 
     public List<CrearParadaRequest> Paradas { get; set; } = [];

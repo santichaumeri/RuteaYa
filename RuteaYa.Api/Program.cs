@@ -1,17 +1,31 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
+using Microsoft.OpenApi.Models;
 using RuteaYa.Api.Middleware;
-using RuteaYa.Entidades;
 using RuteaYa.Api.Services.Auth;
+using RuteaYa.Api.Swagger;
+using RuteaYa.Entidades;
 using RuteaYa.Logica.Data;
+using RuteaYa.Logica.Optimizacion;
+using RuteaYa.Logica.Optimizacion.Criterios;
 using RuteaYa.Logica.Servicios;
+using RuteaYa.Logica.Servicios.Rutas;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Falta configurar ConnectionStrings:DefaultConnection en appsettings.json.");
+
+builder.Services.AddDbContext<RuteaYaDbContext>(options =>
+    options.UseSqlServer(
+        connectionString,
+        sql => sql.MigrationsAssembly("RuteaYa.Logica")));
+
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Falta configurar Jwt:Key.");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"]
@@ -36,17 +50,34 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
-builder.Services.AddScoped<IDashboardService, DashboardService>();
-builder.Services.AddScoped<IViajeService, ViajeService>();
-
-builder.Services.AddDbContext<RuteaYaDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        sql => sql.MigrationsAssembly("RuteaYa.Logica")));
 
 // Servicios de negocio (viven en RuteaYa.Logica). Los controllers los reciben por inyección.
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IViajeService, ViajeService>();
+
+// REGISTROS DE ENVÍOS (HU-07, HU-08, HU-09)
+builder.Services.AddScoped<IEstadoEnvioService, EstadoEnvioService>();
+builder.Services.AddScoped<IEnvioService, EnvioService>();
+
+// OPTIMIZADOR (HU-13). El algoritmo no tiene estado, por eso es singleton.
+builder.Services.AddSingleton<IOptimizadorEnvios, OptimizadorEnvios>();
+builder.Services.AddScoped<IOptimizacionService, OptimizacionService>();
+
+// CRITERIOS DE OPTIMIZACIÓN (HU-15, patrón Strategy). Un criterio nuevo = una clase + una línea acá.
+builder.Services.AddSingleton<ICriterioOptimizacion>(CriterioMaximizarGanancias.Instancia);
+builder.Services.AddSingleton<ICriterioOptimizacion, CriterioMinimizarDesvios>();
+builder.Services.AddSingleton<ICriterioOptimizacion>(new CriterioEquilibrio(
+    builder.Configuration.GetValue("Optimizacion:Equilibrio:CostoPorKm", CriterioEquilibrio.CostoPorKmPorDefecto)));
+builder.Services.AddSingleton<ICatalogoCriterios, CatalogoCriterios>();
+
+// OPORTUNIDADES (HU-11, HU-12). TimeProvider permite fijar "hoy" en los tests.
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<IOportunidadService, OportunidadService>();
+
+// OPTIMIZADOR DEL VIAJE (HU-14): oportunidades de una fecha + optimizador + criterio.
+builder.Services.AddScoped<IOptimizacionViajeService, OptimizacionViajeService>();
 
 // Manejo global de errores (400, 401, 403, 404, 409, 500)
 builder.Services.AddProblemDetails();
@@ -63,7 +94,32 @@ builder.Services.AddSwaggerGen(options =>
     {
         options.IncludeXmlComments(xmlPath);
     }
+
+    // Botón "Authorize": se pega el token que devuelve POST api/usuarios/login (sin el prefijo "Bearer").
+    options.AddSecurityDefinition(AutorizacionOperationFilter.Esquema, new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Token JWT obtenido en POST api/usuarios/login."
+    });
+    options.OperationFilter<AutorizacionOperationFilter>();
 });
+
+var mapsApiKey = builder.Configuration["GoogleMaps:ApiKey"];
+if (string.IsNullOrWhiteSpace(mapsApiKey))
+{
+    builder.Services.AddScoped<IRoutingService, MockRoutingService>();
+}
+else
+{
+    // Cuando se implemente el proveedor real:
+    // builder.Services.AddScoped<IRoutingService, GoogleMapsRoutingService>();
+    builder.Services.AddScoped<IRoutingService, MockRoutingService>();
+}
+
+builder.Services.AddScoped<IAsignacionService, AsignacionService>();
 
 var app = builder.Build();
 

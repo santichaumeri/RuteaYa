@@ -49,7 +49,26 @@ builder.Services
         options.SlidingExpiration = true;
     });
 
-builder.Services.AddSingleton<IEstadoEnvioService, EstadoEnvioService>();
+builder.Services.AddHttpClient<IEnviosApiClient, EnviosApiClient>(client =>
+{
+    var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
+        ?? throw new InvalidOperationException("Falta la configuración ApiBaseUrl.");
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
+builder.Services.AddHttpClient<IOportunidadesApiClient, OportunidadesApiClient>(client =>
+{
+    var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
+        ?? throw new InvalidOperationException("Falta la configuración ApiBaseUrl.");
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
+builder.Services.AddHttpClient<IOptimizadorApiClient, OptimizadorApiClient>(client =>
+{
+    var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
+        ?? throw new InvalidOperationException("Falta la configuración ApiBaseUrl.");
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
 
 var app = builder.Build();
 

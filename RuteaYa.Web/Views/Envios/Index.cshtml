@@ -1,0 +1,157 @@
+﻿@using RuteaYa.Entidades.Enums
+@model List<RuteaYa.Logica.Dtos.Envios.EnvioDetalleDto>
+
+@{
+    ViewData["Title"] = "Mis Envíos";
+    var estadoFiltro = ViewBag.EstadoSeleccionado as EstadoEnvio?;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0">Mis Envíos</h2>
+            <p class="text-muted mb-0">Gestioná y hacé el seguimiento de tus paquetes publicados</p>
+        </div>
+        <a asp-action="Crear" class="btn btn-primary">
+            Publicar nuevo envío
+        </a>
+    </div>
+
+    @if (TempData["MensajeExito"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["MensajeExito"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["MensajeError"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["MensajeError"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Filtros por Estado -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body py-2">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="fw-semibold text-secondary me-2">Filtrar por estado:</span>
+                <a asp-action="Index" class="btn btn-sm @(estadoFiltro == null ? "btn-dark" : "btn-outline-secondary")">
+                    Todos
+                </a>
+                <a asp-action="Index" asp-route-estado="@EstadoEnvio.BuscandoConductor"
+                   class="btn btn-sm @(estadoFiltro == EstadoEnvio.BuscandoConductor ? "btn-warning text-dark" : "btn-outline-warning text-dark")">
+                    Buscando conductor
+                </a>
+                <a asp-action="Index" asp-route-estado="@EstadoEnvio.ConductorAsignado"
+                   class="btn btn-sm @(estadoFiltro == EstadoEnvio.ConductorAsignado ? "btn-info text-dark" : "btn-outline-info text-dark")">
+                    Conductor asignado
+                </a>
+                <a asp-action="Index" asp-route-estado="@EstadoEnvio.Retirado"
+                   class="btn btn-sm @(estadoFiltro == EstadoEnvio.Retirado ? "btn-primary" : "btn-outline-primary")">
+                    Retirado
+                </a>
+                <a asp-action="Index" asp-route-estado="@EstadoEnvio.EnCamino"
+                   class="btn btn-sm @(estadoFiltro == EstadoEnvio.EnCamino ? "btn-primary" : "btn-outline-primary")">
+                    En camino
+                </a>
+                <a asp-action="Index" asp-route-estado="@EstadoEnvio.Entregado"
+                   class="btn btn-sm @(estadoFiltro == EstadoEnvio.Entregado ? "btn-success" : "btn-outline-success")">
+                    Entregado
+                </a>
+                <a asp-action="Index" asp-route-estado="@EstadoEnvio.Cancelado"
+                   class="btn btn-sm @(estadoFiltro == EstadoEnvio.Cancelado ? "btn-danger" : "btn-outline-danger")">
+                    Cancelado
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Envíos -->
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Origen / Destino</th>
+                        <th>Descripción</th>
+                        <th>Peso / Tamaño</th>
+                        <th>Monto</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                No se encontraron envíos para el criterio seleccionado.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var envio in Model)
+                        {
+                            <tr>
+                                <td>@envio.Fecha.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    <strong>@envio.Origen</strong>
+                                    <div class="text-muted small">hacia @envio.Destino</div>
+                                </td>
+                                <td>@envio.Descripcion</td>
+                                <td>
+                                    <span>@envio.PesoKg kg</span>
+                                    <span class="badge bg-light text-dark border">@envio.Tamano</span>
+                                </td>
+                                <td class="fw-bold text-success">$@envio.MontoOfrecido.ToString("N2")</td>
+                                <td>
+                                    @switch (envio.Estado)
+                                    {
+                                        case EstadoEnvio.BuscandoConductor:
+                                            <span class="badge bg-warning text-dark">Buscando conductor</span>
+                                            break;
+                                        case EstadoEnvio.ConductorAsignado:
+                                            <span class="badge bg-info text-dark">Conductor asignado</span>
+                                            break;
+                                        case EstadoEnvio.Retirado:
+                                            <span class="badge bg-secondary">Retirado</span>
+                                            break;
+                                        case EstadoEnvio.EnCamino:
+                                            <span class="badge bg-primary">En camino</span>
+                                            break;
+                                        case EstadoEnvio.Entregado:
+                                            <span class="badge bg-success">Entregado</span>
+                                            break;
+                                        case EstadoEnvio.Cancelado:
+                                            <span class="badge bg-danger">Cancelado</span>
+                                            break;
+                                        default:
+                                            <span class="badge bg-secondary">@envio.Estado</span>
+                                            break;
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    @if (envio.Estado == EstadoEnvio.BuscandoConductor)
+                                    {
+                                        <form asp-action="Cancelar" asp-route-id="@envio.Id" method="post" class="d-inline"
+                                              onsubmit="return confirm('¿Seguro que deseas cancelar este envío?');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                Cancelar
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

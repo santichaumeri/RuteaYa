@@ -41,7 +41,7 @@
                     <p>Esto pasa con tus viajes y envíos.</p>
                 </div>
                 <div class="quick-actions">
-                    <a class="button button-light" asp-controller="Envios" asp-action="Create">Nuevo envío</a>
+                    <a class="button button-light" asp-controller="Envios" asp-action="Crear">Nuevo envío</a>
                     <a class="button button-dark" asp-controller="Viajes" asp-action="Crear">Nuevo viaje</a>
                 </div>
             </header>
@@ -87,7 +87,7 @@
                         <div class="dashboard-list">
                             @foreach (var viaje in Model.Viajes)
                             {
-                                <a class="dashboard-list-item" asp-controller="Viajes" asp-action="Details" asp-route-id="@viaje.Id">
+                                <a class="dashboard-list-item" asp-controller="Viajes" asp-action="Detalle" asp-route-id="@viaje.Id">
                                     <span>
                                         <strong>@viaje.Ruta</strong>
                                         <small>@viaje.Dias · @viaje.Horario</small>

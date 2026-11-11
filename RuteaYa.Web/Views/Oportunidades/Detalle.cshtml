@@ -1,0 +1,151 @@
+@using RuteaYa.Web.Models.Oportunidades
+@model OportunidadDetalleViewModel
+@{
+    ViewData["Title"] = "Detalle de oportunidad";
+}
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+        @error
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-9">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+            <div>
+                <h1 class="h3 mb-1">@Model.Origen → @Model.Destino</h1>
+                <p class="text-muted mb-0">
+                    Para tu viaje <strong>@Model.ViajeOrigen → @Model.ViajeDestino</strong> del @Model.Fecha.ToString("dddd dd/MM/yyyy").
+                </p>
+            </div>
+            <span class="badge fs-6 @OportunidadFormato.ClaseCompatibilidad(Model.NivelCompatibilidad)">@Model.Compatibilidad</span>
+        </div>
+
+        @if (!Model.PuedeAceptarse)
+        {
+            <div class="alert alert-warning">
+                <strong>No se puede aceptar este envío:</strong>
+                <ul class="mb-0">
+                    @foreach (var motivo in Model.MotivosBloqueo)
+                    {
+                        <li>@motivo</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body p-4">
+                        <h2 class="h5 mb-3">Ruta habitual vs. con el envío</h2>
+                        <dl class="row mb-0">
+                            <dt class="col-7">Distancia habitual</dt>
+                            <dd class="col-5 text-end">@Model.DistanciaHabitualKm.ToString("0.##") km</dd>
+                            <dt class="col-7">Distancia con el envío</dt>
+                            <dd class="col-5 text-end">@Model.DistanciaConEnvioKm.ToString("0.##") km</dd>
+                            <dt class="col-7">Desvío</dt>
+                            <dd class="col-5 text-end"><strong>@Model.DesvioKm.ToString("0.##") km</strong></dd>
+                            <dt class="col-7">Tiempo habitual</dt>
+                            <dd class="col-5 text-end">@OportunidadFormato.Minutos(Model.TiempoHabitual)</dd>
+                            <dt class="col-7">Tiempo adicional</dt>
+                            <dd class="col-5 text-end mb-0"><strong>+@OportunidadFormato.Minutos(Model.TiempoAdicional)</strong></dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body p-4">
+                        <h2 class="h5 mb-3">Paquete y ganancia</h2>
+                        <dl class="row mb-0">
+                            <dt class="col-7">Pago</dt>
+                            <dd class="col-5 text-end"><strong>@Model.Pago.ToString("C0")</strong></dd>
+                            <dt class="col-7">Ganancia por km adicional</dt>
+                            <dd class="col-5 text-end">
+                                @(Model.GananciaPorKmAdicional is decimal porKm ? porKm.ToString("C0") + "/km" : "Sin desvío")
+                            </dd>
+                            <dt class="col-7">Peso</dt>
+                            <dd class="col-5 text-end">@Model.PesoKg.ToString("0.##") kg</dd>
+                            <dt class="col-7">Tamaño</dt>
+                            <dd class="col-5 text-end">@OportunidadFormato.Tamano(Model.Tamano)</dd>
+                            <dt class="col-7">Descripción</dt>
+                            <dd class="col-5 text-end mb-0">@Model.Descripcion</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <h2 class="h5 mb-3">Capacidad restante ese día</h2>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Paquetes</dt>
+                    <dd class="col-sm-8">
+                        @Model.PaquetesDisponibles disponibles
+                        @if (Model.PuedeAceptarse)
+                        {
+                            <span class="text-muted">(quedarían @(Model.PaquetesDisponibles - 1) si lo aceptás)</span>
+                        }
+                    </dd>
+                    <dt class="col-sm-4">Peso</dt>
+                    <dd class="col-sm-8">
+                        @Model.PesoDisponibleKg.ToString("0.##") kg disponibles
+                        @if (Model.PuedeAceptarse)
+                        {
+                            <span class="text-muted">(quedarían @((Model.PesoDisponibleKg - Model.PesoKg).ToString("0.##")) kg)</span>
+                        }
+                    </dd>
+                    <dt class="col-sm-4">Desvío</dt>
+                    <dd class="col-sm-8 mb-0">
+                        @Model.DesvioDisponibleKm.ToString("0.##") km disponibles
+                        @if (Model.PuedeAceptarse)
+                        {
+                            <span class="text-muted">(quedarían @((Model.DesvioDisponibleKm - Model.DesvioKm).ToString("0.##")) km)</span>
+                        }
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        @if (Model.RecorridoConEnvio.Count > 0)
+        {
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <h2 class="h5 mb-3">Recorrido sugerido</h2>
+                    <ol class="mb-0">
+                        @foreach (var punto in Model.RecorridoConEnvio)
+                        {
+                            <li>@punto</li>
+                        }
+                    </ol>
+                </div>
+            </div>
+        }
+
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            @if (Model.PuedeAceptarse)
+            {
+                <form asp-action="Aceptar" asp-route-viajeId="@Model.ViajeId" asp-route-envioId="@Model.EnvioId" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-primary">
+                        Aceptar envío
+                    </button>
+                </form>
+            }
+            else
+            {
+                <button type="button" class="btn btn-primary" disabled
+                        title="Las restricciones del viaje ya no se cumplen.">
+                    Aceptar envío
+                </button>
+            }
+            <a asp-action="Index" asp-route-viajeId="@Model.ViajeId" class="btn btn-outline-secondary">Volver a la lista</a>
+        </div>
+    </div>
+</div>
