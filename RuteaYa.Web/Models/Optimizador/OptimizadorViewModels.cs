@@ -57,6 +57,17 @@ public sealed class CombinacionViewModel
     public List<string> MotivosDescarte { get; set; } = [];
 }
 
+/// <summary>Respuesta de POST api/asignaciones/combinacion (HU-17): lo que quedó reservado.</summary>
+public sealed class CombinacionConfirmadaViewModel
+{
+    public int ViajeId { get; set; }
+    public DateOnly Fecha { get; set; }
+    public int CantidadPaquetes { get; set; }
+    public decimal GananciaTotal { get; set; }
+    public decimal PesoTotalKg { get; set; }
+    public decimal DesvioTotalKm { get; set; }
+}
+
 /// <summary>Criterios de HU-15 tal como los acepta la API.</summary>
 public static class CriteriosOptimizacion
 {

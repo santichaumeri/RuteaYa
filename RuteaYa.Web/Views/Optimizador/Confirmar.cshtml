@@ -1,0 +1,140 @@
+@using RuteaYa.Web.Models.Optimizador
+@using RuteaYa.Web.Models.Oportunidades
+@model ConfirmarCombinacionViewModel
+@{
+    ViewData["Title"] = "Confirmar combinación";
+    var fecha = Model.Fecha.ToString("yyyy-MM-dd");
+    var tieneViaje = !string.IsNullOrEmpty(Model.ViajeOrigen);
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+        <div class="mb-4">
+            <h1 class="h3 mb-1">Confirmar combinación</h1>
+            <p class="text-muted mb-0">
+                @if (tieneViaje)
+                {
+                    <span>@Model.ViajeOrigen → @Model.ViajeDestino · </span>
+                }
+                @Model.Fecha.ToString("dddd dd/MM/yyyy")
+            </p>
+        </div>
+
+        @if (Model.Error is not null)
+        {
+            <div class="alert alert-warning">
+                <strong>@Model.Error</strong>
+                @if (Model.EnviosNoDisponibles.Count > 0)
+                {
+                    <div class="mt-1">
+                        Ya no están disponibles:
+                        @string.Join(", ", Model.EnviosNoDisponibles.Select(id => $"#{id}")).
+                        No se reservó ninguno.
+                    </div>
+                }
+            </div>
+        }
+
+        @if (Model.Envios.Count > 0)
+        {
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body">
+                            <div class="small text-muted">Paquetes</div>
+                            <div class="h4 mb-0">@Model.CantidadPaquetes</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body">
+                            <div class="small text-muted">Ganancia total</div>
+                            <div class="h4 mb-0">@Model.GananciaTotal.ToString("C0")</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body">
+                            <div class="small text-muted">Peso total</div>
+                            <div class="h4 mb-0">@Model.PesoTotalKg.ToString("0.##") kg</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body">
+                            <div class="small text-muted">Desvío total</div>
+                            <div class="h4 mb-0">@Model.DesvioTotalKm.ToString("0.##") km</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <h2 class="h5 mb-3">Envíos a reservar</h2>
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Envío</th>
+                                    <th class="text-end">Peso</th>
+                                    <th class="text-end">Desvío</th>
+                                    <th class="text-end">Pago</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var envio in Model.Envios)
+                                {
+                                    <tr>
+                                        <td>
+                                            <strong>#@envio.EnvioId · @envio.Origen → @envio.Destino</strong>
+                                            <div class="small text-muted">@envio.Descripcion · @OportunidadFormato.Tamano(envio.Tamano)</div>
+                                        </td>
+                                        <td class="text-end">@envio.PesoKg.ToString("0.##") kg</td>
+                                        <td class="text-end">@envio.DesvioKm.ToString("0.##") km</td>
+                                        <td class="text-end">@envio.Pago.ToString("C0")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <th>Total</th>
+                                    <th class="text-end">@Model.PesoTotalKg.ToString("0.##") kg</th>
+                                    <th class="text-end">@Model.DesvioTotalKm.ToString("0.##") km</th>
+                                    <th class="text-end">@Model.GananciaTotal.ToString("C0")</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="d-flex flex-wrap gap-2">
+            @if (Model.PuedeConfirmar)
+            {
+                <a asp-action="Index" asp-route-viajeId="@Model.ViajeId" asp-route-fecha="@fecha" asp-route-criterio="@Model.Criterio"
+                   class="btn btn-outline-secondary">Volver</a>
+
+                <form method="post" asp-action="ConfirmarReserva" asp-route-viajeId="@Model.ViajeId" class="d-inline">
+                    <input type="hidden" name="fecha" value="@fecha" />
+                    <input type="hidden" name="criterio" value="@Model.Criterio" />
+                    @foreach (var envio in Model.Envios)
+                    {
+                        <input type="hidden" name="envioIds" value="@envio.EnvioId" />
+                    }
+                    <button type="submit" class="btn btn-success">Confirmar y reservar</button>
+                </form>
+            }
+            else
+            {
+                <a asp-action="Index" asp-route-viajeId="@Model.ViajeId" asp-route-fecha="@fecha" asp-route-criterio="@Model.Criterio"
+                   class="btn btn-primary">Recalcular</a>
+                <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+            }
+        </div>
+    </div>
+</div>
