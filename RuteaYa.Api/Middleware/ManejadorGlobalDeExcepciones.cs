@@ -27,6 +27,7 @@ public class ManejadorGlobalDeExcepciones : IExceptionHandler
             AccesoDenegadoException => (StatusCodes.Status403Forbidden, "Acceso denegado"),
             NotFoundException => (StatusCodes.Status404NotFound, "No encontrado"),
             ConflictException => (StatusCodes.Status409Conflict, "Conflicto"),
+            CombinacionConflictoException => (StatusCodes.Status409Conflict, "Conflicto"),
             DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "Conflicto de concurrencia"),
             _ => (StatusCodes.Status500InternalServerError, "Error interno")
         };
@@ -52,6 +53,12 @@ public class ManejadorGlobalDeExcepciones : IExceptionHandler
             Detail = detalle,
             Instance = httpContext.Request.Path
         };
+
+        // HU-17: además del mensaje, se informan cuáles envíos de la combinación ya no están disponibles.
+        if (exception is CombinacionConflictoException conflicto)
+        {
+            problema.Extensions["enviosNoDisponibles"] = conflicto.EnvioIdsNoDisponibles;
+        }
 
         httpContext.Response.StatusCode = status;
         await httpContext.Response.WriteAsJsonAsync(problema, cancellationToken);

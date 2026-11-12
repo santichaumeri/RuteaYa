@@ -49,5 +49,23 @@ public class AsignacionController : ControllerBase
             return Conflict(new { mensaje = ex.Message });
         }
     }
+
+    
+    [HttpPost("combinacion")]
+    [ProducesResponseType(typeof(CombinacionConfirmadaDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<CombinacionConfirmadaDto>> ConfirmarCombinacion(
+        [FromBody] ConfirmarCombinacionRequestDto dto)
+    {
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId))
+            return Unauthorized();
+
+        var resultado = await _asignacionService.ConfirmarCombinacionAsync(usuarioId, dto);
+        return StatusCode(StatusCodes.Status201Created, resultado);
+    }
 }
 

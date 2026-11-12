@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 
 namespace RuteaYa.Web.Servicios;
 
-internal record ApiError(int? Status, string? Title, string? Detail);
+internal record ApiError(int? Status, string? Title, string? Detail, List<int>? EnviosNoDisponibles);
 
 public static class ApiResponseExtensions
 {
@@ -17,6 +17,7 @@ public static class ApiResponseExtensions
         }
 
         var mensaje = "No se pudo completar la operación.";
+        IReadOnlyList<int>? enviosNoDisponibles = null;
         try
         {
             var error = await response.Content.ReadFromJsonAsync<ApiError>();
@@ -28,12 +29,15 @@ public static class ApiResponseExtensions
             {
                 mensaje = error.Title;
             }
+
+            // HU-17: el 409 de una combinación informa cuáles envíos se perdieron.
+            enviosNoDisponibles = error?.EnviosNoDisponibles;
         }
         catch (Exception)
         {
             // cuerpo vacío o que no es JSON: queda el mensaje genérico
         }
 
-        throw new ApiException((int)response.StatusCode, mensaje);
+        throw new ApiException((int)response.StatusCode, mensaje, enviosNoDisponibles);
     }
 }

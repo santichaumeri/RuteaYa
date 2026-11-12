@@ -38,6 +38,11 @@
 
         <partial name="_SelectorViaje" model="@(new SelectorViajeViewModel(Model.MisViajes, datos?.ViajeId, datos is null ? null : $"{datos.ViajeOrigen} → {datos.ViajeDestino}", "Optimizador"))" />
 
+        @if (TempData["Exito"] is string exito)
+        {
+            <div class="alert alert-success">@exito</div>
+        }
+
         @if (Model.Error is not null)
         {
             <div class="alert alert-warning">@Model.Error</div>
@@ -149,9 +154,15 @@
                                         }
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-success" disabled title="La confirmación se habilita con HU-17.">
-                                    Confirmar combinación
-                                </button>
+                                <form method="get" asp-controller="Optimizador" asp-action="Confirmar" asp-route-viajeId="@datos.ViajeId">
+                                    <input type="hidden" name="fecha" value="@datos.Fecha.Value.ToString("yyyy-MM-dd")" />
+                                    <input type="hidden" name="criterio" value="@Model.Criterio" />
+                                    @foreach (var envioId in mejor.EnvioIds)
+                                    {
+                                        <input type="hidden" name="envioIds" value="@envioId" />
+                                    }
+                                    <button type="submit" class="btn btn-success">Confirmar combinación</button>
+                                </form>
                             </div>
 
                             <div class="table-responsive">

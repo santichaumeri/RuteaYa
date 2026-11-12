@@ -6,6 +6,7 @@ using RuteaYa.Entidades.Enums;
 using RuteaYa.Logica.Data;
 using RuteaYa.Logica.Dtos.Asignaciones;
 using RuteaYa.Logica.Dtos.Rutas;
+using RuteaYa.Logica.Excepciones;
 using RuteaYa.Logica.Servicios;
 using RuteaYa.Logica.Servicios.Rutas;
 using System;
@@ -263,5 +264,259 @@ public class AsignacionServiceTests
             service.AceptarOportunidadAsync(conductorId, new AsignarOportunidadRequestDto { ViajeId = 1, EnvioId = 100 }));
 
         Assert.Contains("supera el máximo tolerado", ex.Message);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // HU-17: confirmar una combinación completa (todo o nada)
+    // ---------------------------------------------------------------------------------------------
+
+    private static readonly DateOnly HoyCombinacion = new(2026, 11, 10);
+    private static readonly DateOnly FechaCombinacion = new(2026, 11, 12);
+    private const int ConductorId = 10;
+    private const int RemitenteId = 20;
+
+    private AsignacionService CrearServicioDeCombinaciones(RuteaYaDbContext context) =>
+        new(context, _estadoEnvioServiceMock.Object, new RutasFalsas(), new RelojFijo(HoyCombinacion));
+
+    /// <summary>Viaje activo que sale todos los días, con los límites indicados.</summary>
+    private static Viaje CrearViajeConLimites(int maxPaquetes = 3, decimal pesoMaximoKg = 20m, decimal desvioMaximoKm = 10m) => new()
+    {
+        Id = 1,
+        UsuarioId = ConductorId,
+        Origen = "Moron",
+        Destino = "Castelar",
+        DiasSemana = DiasSemana.Lunes | DiasSemana.Martes | DiasSemana.Miercoles | DiasSemana.Jueves
+            | DiasSemana.Viernes | DiasSemana.Sabado | DiasSemana.Domingo,
+        MaxPaquetes = maxPaquetes,
+        PesoMaximoKg = pesoMaximoKg,
+        DesvioMaximoKm = desvioMaximoKm,
+        Estado = EstadoViaje.Activo
+    };
+
+    /// <summary>El destino define el desvío (ver RutasFalsas): "Medio" 0,5 km, "A" 2 km, "Cerca" 3 km.</summary>
+    private static Envio CrearEnvioParaCombinar(
+        int id,
+        string destino,
+        decimal pesoKg,
+        decimal monto,
+        EstadoEnvio estado = EstadoEnvio.BuscandoConductor,
+        int usuarioId = RemitenteId) => new()
+    {
+        Id = id,
+        UsuarioId = usuarioId,
+        Origen = "Moron",
+        Destino = destino,
+        Fecha = FechaCombinacion,
+        PesoKg = pesoKg,
+        MontoOfrecido = monto,
+        Estado = estado
+    };
+
+    private static ConfirmarCombinacionRequestDto PedirCombinacion(params int[] envioIds) => new()
+    {
+        ViajeId = 1,
+        Fecha = FechaCombinacion,
+        EnvioIds = envioIds.ToList()
+    };
+
+    private static async Task AssertNoSeReservoNadaAsync(
+        RuteaYaDbContext context,
+        int asignacionesEsperadas,
+        params int[] envioIdsQueSiguenLibres)
+    {
+        Assert.Equal(asignacionesEsperadas, await context.Asignaciones.CountAsync());
+
+        var estados = await context.Envios
+            .Where(e => envioIdsQueSiguenLibres.Contains(e.Id))
+            .Select(e => e.Estado)
+            .ToListAsync();
+
+        Assert.Equal(envioIdsQueSiguenLibres.Length, estados.Count);
+        Assert.All(estados, estado => Assert.Equal(EstadoEnvio.BuscandoConductor, estado));
+    }
+
+    [Fact]
+    public async Task ConfirmarCombinacionAsync_DatosValidos_ReservaTodosLosEnvios()
+    {
+        using var context = CrearDbContextEnMemoria();
+        context.Viajes.Add(CrearViajeConLimites());
+        context.Envios.AddRange(
+            CrearEnvioParaCombinar(100, "A", pesoKg: 4m, monto: 2500m),      // desvío 2 km
+            CrearEnvioParaCombinar(101, "Cerca", pesoKg: 5m, monto: 3000m),  // desvío 3 km
+            CrearEnvioParaCombinar(102, "Medio", pesoKg: 3m, monto: 1000m)); // desvío 0,5 km
+        await context.SaveChangesAsync();
+
+        var service = CrearServicioDeCombinaciones(context);
+
+        var resultado = await service.ConfirmarCombinacionAsync(ConductorId, PedirCombinacion(100, 101, 102));
+
+        Assert.Equal(3, resultado.CantidadPaquetes);
+        Assert.Equal(6500m, resultado.GananciaTotal);
+        Assert.Equal(12m, resultado.PesoTotalKg);
+        Assert.Equal(5.5m, resultado.DesvioTotalKm);
+        Assert.Equal(3, resultado.Asignaciones.Count);
+
+        Assert.Equal(3, await context.Asignaciones.CountAsync());
+
+        var estados = await context.Envios.Select(e => e.Estado).ToListAsync();
+        Assert.All(estados, estado => Assert.Equal(EstadoEnvio.ConductorAsignado, estado));
+    }
+
+    [Fact]
+    public async Task ConfirmarCombinacionAsync_UnEnvioYaTomado_LanzaConflictoYNoReservaNinguno()
+    {
+        using var context = CrearDbContextEnMemoria();
+        context.Viajes.Add(CrearViajeConLimites());
+        context.Envios.AddRange(
+            CrearEnvioParaCombinar(100, "A", pesoKg: 4m, monto: 2500m),
+            CrearEnvioParaCombinar(101, "Cerca", pesoKg: 5m, monto: 3000m),
+            CrearEnvioParaCombinar(102, "Medio", pesoKg: 3m, monto: 1000m, estado: EstadoEnvio.ConductorAsignado)); // lo tomó otro
+        await context.SaveChangesAsync();
+
+        var service = CrearServicioDeCombinaciones(context);
+
+        var ex = await Assert.ThrowsAsync<CombinacionConflictoException>(() =>
+            service.ConfirmarCombinacionAsync(ConductorId, PedirCombinacion(100, 101, 102)));
+
+        Assert.Equal(new[] { 102 }, ex.EnvioIdsNoDisponibles);
+
+        // Todo o nada: los dos envíos libres tampoco se reservaron.
+        await AssertNoSeReservoNadaAsync(context, asignacionesEsperadas: 0, 100, 101);
+    }
+
+    [Fact]
+    public async Task ConfirmarCombinacionAsync_ExcedeElCupoDePaquetes_LanzaConflictoYNoReservaNada()
+    {
+        using var context = CrearDbContextEnMemoria();
+        context.Viajes.Add(CrearViajeConLimites(maxPaquetes: 2));
+        context.Envios.AddRange(
+            CrearEnvioParaCombinar(100, "A", pesoKg: 1m, monto: 1000m),
+            CrearEnvioParaCombinar(101, "A", pesoKg: 1m, monto: 1000m),
+            CrearEnvioParaCombinar(102, "A", pesoKg: 1m, monto: 1000m));
+        await context.SaveChangesAsync();
+
+        var service = CrearServicioDeCombinaciones(context);
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(() =>
+            service.ConfirmarCombinacionAsync(ConductorId, PedirCombinacion(100, 101, 102)));
+
+        Assert.Contains("cupo de paquetes", ex.Message);
+        await AssertNoSeReservoNadaAsync(context, asignacionesEsperadas: 0, 100, 101, 102);
+    }
+
+    [Fact]
+    public async Task ConfirmarCombinacionAsync_ExcedeElPesoMaximo_LanzaConflictoYNoReservaNada()
+    {
+        using var context = CrearDbContextEnMemoria();
+        context.Viajes.Add(CrearViajeConLimites(pesoMaximoKg: 10m));
+        context.Envios.AddRange(
+            CrearEnvioParaCombinar(100, "Medio", pesoKg: 4m, monto: 1000m),
+            CrearEnvioParaCombinar(101, "Medio", pesoKg: 5m, monto: 1000m),
+            CrearEnvioParaCombinar(102, "Medio", pesoKg: 3m, monto: 1000m)); // total 12 kg
+        await context.SaveChangesAsync();
+
+        var service = CrearServicioDeCombinaciones(context);
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(() =>
+            service.ConfirmarCombinacionAsync(ConductorId, PedirCombinacion(100, 101, 102)));
+
+        Assert.Contains("peso máximo", ex.Message);
+        await AssertNoSeReservoNadaAsync(context, asignacionesEsperadas: 0, 100, 101, 102);
+    }
+
+    [Fact]
+    public async Task ConfirmarCombinacionAsync_ExcedeElDesvioMaximo_LanzaConflictoYNoReservaNada()
+    {
+        using var context = CrearDbContextEnMemoria();
+        context.Viajes.Add(CrearViajeConLimites(desvioMaximoKm: 4m));
+        context.Envios.AddRange(
+            CrearEnvioParaCombinar(100, "A", pesoKg: 1m, monto: 1000m),      // 2 km
+            CrearEnvioParaCombinar(101, "Cerca", pesoKg: 1m, monto: 1000m)); // 3 km -> total 5 km
+        await context.SaveChangesAsync();
+
+        var service = CrearServicioDeCombinaciones(context);
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(() =>
+            service.ConfirmarCombinacionAsync(ConductorId, PedirCombinacion(100, 101)));
+
+        Assert.Contains("desvío máximo", ex.Message);
+        await AssertNoSeReservoNadaAsync(context, asignacionesEsperadas: 0, 100, 101);
+    }
+
+    [Fact]
+    public async Task ConfirmarCombinacionAsync_ConsideraLoYaAsignadoEseDia_LanzaConflicto()
+    {
+        using var context = CrearDbContextEnMemoria();
+        context.Viajes.Add(CrearViajeConLimites(maxPaquetes: 3));
+        context.Envios.AddRange(
+            // Ya reservados antes para ese mismo día: ocupan 2 de los 3 lugares.
+            CrearEnvioParaCombinar(200, "Medio", pesoKg: 1m, monto: 500m, estado: EstadoEnvio.ConductorAsignado),
+            CrearEnvioParaCombinar(201, "Medio", pesoKg: 1m, monto: 500m, estado: EstadoEnvio.ConductorAsignado),
+            // Combinación nueva: sola entraría, pero junto con lo anterior son 4 paquetes.
+            CrearEnvioParaCombinar(100, "Medio", pesoKg: 1m, monto: 1000m),
+            CrearEnvioParaCombinar(101, "Medio", pesoKg: 1m, monto: 1000m));
+        context.Asignaciones.AddRange(
+            new Asignacion { ViajeId = 1, EnvioId = 200, FechaAsignacion = DateTime.UtcNow, DesvioKm = 0.5m, Ganancia = 500m },
+            new Asignacion { ViajeId = 1, EnvioId = 201, FechaAsignacion = DateTime.UtcNow, DesvioKm = 0.5m, Ganancia = 500m });
+        await context.SaveChangesAsync();
+
+        var service = CrearServicioDeCombinaciones(context);
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(() =>
+            service.ConfirmarCombinacionAsync(ConductorId, PedirCombinacion(100, 101)));
+
+        Assert.Contains("cupo de paquetes", ex.Message);
+        await AssertNoSeReservoNadaAsync(context, asignacionesEsperadas: 2, 100, 101);
+    }
+
+    [Fact]
+    public async Task ConfirmarCombinacionAsync_ViajeAjeno_LanzaAccesoDenegado()
+    {
+        using var context = CrearDbContextEnMemoria();
+        context.Viajes.Add(CrearViajeConLimites());
+        context.Envios.Add(CrearEnvioParaCombinar(100, "A", pesoKg: 1m, monto: 1000m));
+        await context.SaveChangesAsync();
+
+        var service = CrearServicioDeCombinaciones(context);
+
+        await Assert.ThrowsAsync<AccesoDenegadoException>(() =>
+            service.ConfirmarCombinacionAsync(usuarioId: 99, PedirCombinacion(100)));
+    }
+
+    [Fact]
+    public async Task ConfirmarCombinacionAsync_EnvioPropio_LanzaConflicto()
+    {
+        using var context = CrearDbContextEnMemoria();
+        context.Viajes.Add(CrearViajeConLimites());
+        context.Envios.Add(CrearEnvioParaCombinar(100, "A", pesoKg: 1m, monto: 1000m, usuarioId: ConductorId));
+        await context.SaveChangesAsync();
+
+        var service = CrearServicioDeCombinaciones(context);
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(() =>
+            service.ConfirmarCombinacionAsync(ConductorId, PedirCombinacion(100)));
+
+        Assert.Contains("publicaste vos", ex.Message);
+        await AssertNoSeReservoNadaAsync(context, asignacionesEsperadas: 0, 100);
+    }
+
+    [Fact]
+    public async Task ConfirmarCombinacionAsync_SinEnvios_LanzaValidacion()
+    {
+        using var context = CrearDbContextEnMemoria();
+        var service = CrearServicioDeCombinaciones(context);
+
+        await Assert.ThrowsAsync<ValidacionException>(() =>
+            service.ConfirmarCombinacionAsync(ConductorId, PedirCombinacion()));
+    }
+
+    [Fact]
+    public async Task ConfirmarCombinacionAsync_EnviosRepetidos_LanzaValidacion()
+    {
+        using var context = CrearDbContextEnMemoria();
+        var service = CrearServicioDeCombinaciones(context);
+
+        await Assert.ThrowsAsync<ValidacionException>(() =>
+            service.ConfirmarCombinacionAsync(ConductorId, PedirCombinacion(100, 100)));
     }
 }
