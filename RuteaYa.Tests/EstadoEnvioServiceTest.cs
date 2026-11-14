@@ -19,7 +19,7 @@ public class EstadoEnvioServiceTest
     [InlineData(EstadoEnvio.ConductorAsignado, EstadoEnvio.Retirado, true)]
     [InlineData(EstadoEnvio.ConductorAsignado, EstadoEnvio.Cancelado, true)]
     [InlineData(EstadoEnvio.Retirado, EstadoEnvio.EnCamino, true)]
-    [InlineData(EstadoEnvio.EnCamino, EstadoEnvio.Retirado, true)]
+    [InlineData(EstadoEnvio.EnCamino, EstadoEnvio.Entregado, true)]
 
     // Violaciones de reglas del enunciado
     [InlineData(EstadoEnvio.BuscandoConductor, EstadoEnvio.Entregado, false)]
@@ -28,6 +28,9 @@ public class EstadoEnvioServiceTest
     [InlineData(EstadoEnvio.Cancelado, EstadoEnvio.ConductorAsignado, false)]
     [InlineData(EstadoEnvio.Retirado, EstadoEnvio.Cancelado, false)]
     [InlineData(EstadoEnvio.EnCamino, EstadoEnvio.Cancelado, false)]
+    [InlineData(EstadoEnvio.EnCamino, EstadoEnvio.Retirado, false)]
+    [InlineData(EstadoEnvio.Retirado, EstadoEnvio.Entregado, false)]
+    [InlineData(EstadoEnvio.ConductorAsignado, EstadoEnvio.Entregado, false)]
 
     public void EsTransicionValida_DebeResponderSegunMatriz(EstadoEnvio actual, EstadoEnvio nuevo, bool esperado)
     {

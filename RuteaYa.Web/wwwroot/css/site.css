@@ -1,5 +1,69 @@
+/* ==========================================================================
+   Estilo visual (verde agua). Todo el color sale de estas variables.
+   Tema claro por defecto; el oscuro se activa con data-bs-theme="dark" en <html>.
+   ========================================================================== */
+
+:root {
+  --qz-primary: #0d9488;
+  --qz-primary-dark: #0f766e;
+  --qz-accent: #14b8a6;
+  --qz-link: #0d9488;
+  --qz-heading: #0f766e;
+  --qz-soft: #f0fdfa;
+  --qz-surface: #ffffff;
+  --qz-border: #ccebe7;
+  --qz-text: #163a37;
+  --qz-shadow: rgba(13, 148, 136, 0.08);
+  --qz-focus: rgba(13, 148, 136, 0.3);
+  --qz-hero-1: var(--qz-primary-dark);
+  --qz-hero-2: var(--qz-primary);
+  --qz-hero-3: var(--qz-accent);
+  --qz-hero-shadow: rgba(13, 148, 136, 0.25);
+
+  --bs-primary: #0d9488;
+  --bs-primary-rgb: 13, 148, 136;
+  --bs-link-color: #0d9488;
+  --bs-link-color-rgb: 13, 148, 136;
+  --bs-link-hover-color: #0f766e;
+  --bs-link-hover-color-rgb: 15, 118, 110;
+  --bs-body-color: #163a37;
+  --bs-body-color-rgb: 22, 58, 55;
+  --bs-body-bg: #f7fdfc;
+  --bs-body-bg-rgb: 247, 253, 252;
+  --bs-border-color: #ccebe7;
+  --bs-border-radius: 0.6rem;
+  --bs-border-radius-lg: 0.9rem;
+  --bs-body-font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+:root[data-bs-theme="dark"] {
+  --qz-link: #5eead4;
+  --qz-heading: #5eead4;
+  --qz-soft: #123533;
+  --qz-surface: #102927;
+  --qz-border: #1f4a46;
+  --qz-text: #d5f2ee;
+  --qz-shadow: rgba(0, 0, 0, 0.35);
+  --qz-hero-1: #0a4f49;
+  --qz-hero-2: #0d7c72;
+  --qz-hero-3: #12a396;
+  --qz-hero-shadow: rgba(0, 0, 0, 0.45);
+
+  --bs-body-color: #d5f2ee;
+  --bs-body-color-rgb: 213, 242, 238;
+  --bs-body-bg: #0b1f1e;
+  --bs-body-bg-rgb: 11, 31, 30;
+  --bs-link-color: #5eead4;
+  --bs-link-color-rgb: 94, 234, 212;
+  --bs-link-hover-color: #99f6e4;
+  --bs-link-hover-color-rgb: 153, 246, 228;
+  --bs-secondary-color: rgba(213, 242, 238, 0.7);
+  --bs-border-color: #1f4a46;
+}
+
+/* ---------- Tipografía ---------- */
 html {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 @media (min-width: 768px) {
@@ -8,24 +72,235 @@ html {
   }
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-html {
-  position: relative;
-  min-height: 100%;
-}
-
 body {
-  margin-bottom: 60px;
+  font-family: var(--bs-body-font-family);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6,
+.navbar-brand,
+.display-1, .display-2, .display-3, .display-4, .display-5, .display-6 {
+  font-family: Poppins, Inter, system-ui, sans-serif;
+  font-weight: 600;
+  color: var(--qz-heading);
+}
+
+/* ---------- Estructura (footer pegado abajo) ---------- */
+body > .container {
+  flex: 1 0 auto;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+.footer {
+  background-color: var(--qz-surface);
+  border-top: 1px solid var(--qz-border);
+  padding: 1rem 0;
+  color: var(--bs-secondary-color);
+}
+
+/* ---------- Botones ---------- */
+.btn {
+  font-weight: 500;
+  border-radius: 0.6rem;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--qz-primary);
+  --bs-btn-border-color: var(--qz-primary);
+  --bs-btn-hover-bg: var(--qz-primary-dark);
+  --bs-btn-hover-border-color: var(--qz-primary-dark);
+  --bs-btn-active-bg: var(--qz-primary-dark);
+  --bs-btn-active-border-color: var(--qz-primary-dark);
+  --bs-btn-disabled-bg: var(--qz-primary);
+  --bs-btn-disabled-border-color: var(--qz-primary);
+  --bs-btn-focus-shadow-rgb: 13, 148, 136;
+}
+
+.btn-primary:focus-visible,
+.btn-primary:focus {
+  box-shadow: 0 0 0 0.25rem var(--qz-focus);
+  border-color: var(--qz-accent);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--qz-link);
+  --bs-btn-border-color: var(--qz-primary);
+  --bs-btn-hover-bg: var(--qz-primary);
+  --bs-btn-hover-border-color: var(--qz-primary);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: var(--qz-primary);
+  --bs-btn-active-border-color: var(--qz-primary);
+  --bs-btn-active-color: #fff;
+  --bs-btn-focus-shadow-rgb: 13, 148, 136;
+}
+
+.nav-pills {
+  --bs-nav-pills-link-active-bg: var(--qz-primary);
+}
+
+/* ---------- Formularios ---------- */
+.form-control,
+.form-select {
+  background-color: var(--qz-surface);
+  border-color: var(--qz-border);
+}
+
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  box-shadow: 0 0 0 0.25rem var(--qz-focus);
+  border-color: var(--qz-accent);
+}
+
+.form-check-input:checked {
+  background-color: var(--qz-primary);
+  border-color: var(--qz-primary);
+}
+
+.form-floating > .form-control-plaintext::placeholder,
+.form-floating > .form-control::placeholder {
   color: var(--bs-secondary-color);
   text-align: end;
 }
 
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
+.form-floating > .form-control-plaintext:focus::placeholder,
+.form-floating > .form-control:focus::placeholder {
   text-align: start;
+}
+
+/* ---------- Navbar ---------- */
+.navbar {
+  --bs-navbar-color: var(--qz-text);
+  --bs-navbar-hover-color: var(--qz-link);
+  --bs-navbar-active-color: var(--qz-link);
+  background-color: var(--qz-surface);
+  border-bottom: 1px solid var(--qz-border);
+  box-shadow: 0 2px 8px var(--qz-shadow);
+}
+
+.navbar .nav-link {
+  color: var(--qz-text);
+}
+
+.navbar .nav-link:hover,
+.navbar .nav-link:focus {
+  color: var(--qz-link);
+}
+
+.navbar .navbar-text {
+  color: var(--qz-text);
+}
+
+.navbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.qz-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.55rem;
+  background: linear-gradient(135deg, var(--qz-primary-dark), var(--qz-accent));
+  color: #fff;
+  font-family: Poppins, Inter, system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1;
+}
+
+:root[data-bs-theme="dark"] .navbar-toggler-icon {
+  filter: invert(1);
+}
+
+:root[data-bs-theme="dark"] .navbar-toggler {
+  border-color: var(--qz-border);
+}
+
+/* ---------- Cards ---------- */
+.card {
+  --bs-card-bg: var(--qz-surface);
+  --bs-card-border-color: var(--qz-border);
+  --bs-card-border-radius: 0.9rem;
+  --bs-card-cap-bg: var(--qz-soft);
+  background-color: var(--qz-surface);
+  border: 1px solid var(--qz-border);
+  border-radius: 0.9rem;
+  box-shadow: 0 2px 10px var(--qz-shadow);
+  overflow: hidden;
+}
+
+.card-header {
+  background-color: var(--qz-soft);
+  border-bottom: 1px solid var(--qz-border);
+}
+
+/* ---------- Tablas ---------- */
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--qz-text);
+  --bs-table-border-color: var(--qz-border);
+  --bs-table-hover-bg: var(--qz-soft);
+  --bs-table-hover-color: var(--qz-text);
+  border-color: var(--qz-border);
+}
+
+.table > thead,
+.table > thead.table-light,
+.table-light {
+  --bs-table-bg: var(--qz-soft);
+  --bs-table-color: var(--qz-heading);
+  --bs-table-border-color: var(--qz-border);
+  color: var(--qz-heading);
+  font-weight: 600;
+}
+
+.table > thead th {
+  background-color: var(--qz-soft);
+  color: var(--qz-heading);
+  font-weight: 600;
+}
+
+/* ---------- Alerts ---------- */
+.alert {
+  border-radius: 0.7rem;
+}
+
+/* ---------- Portada (hero) ---------- */
+.qz-hero {
+  background: linear-gradient(135deg, var(--qz-hero-1) 0%, var(--qz-hero-2) 55%, var(--qz-hero-3) 100%);
+  color: #fff;
+  border-radius: 1.5rem;
+  padding: 3.5rem 2rem;
+  box-shadow: 0 12px 30px var(--qz-hero-shadow);
+}
+
+.qz-hero h1,
+.qz-hero .display-4 {
+  color: #fff;
+}
+
+.qz-hero a {
+  color: #fff;
+  text-decoration: underline;
+}
+
+/* ---------- Franja destacada ---------- */
+.qz-franja {
+  background-color: var(--qz-soft);
+  border: 1px solid var(--qz-border);
+  border-left: 5px solid var(--qz-primary);
+  border-radius: 0.8rem;
+  padding: 1rem 1.25rem;
 }

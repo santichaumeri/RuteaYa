@@ -3,7 +3,6 @@ using RuteaYa.Logica.Excepciones;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Windows.Markup;
 
 namespace RuteaYa.Logica.Servicios;
 
@@ -15,7 +14,7 @@ public class EstadoEnvioService : IEstadoEnvioService
         [EstadoEnvio.BuscandoConductor] = new() { EstadoEnvio.ConductorAsignado, EstadoEnvio.Cancelado},
         [EstadoEnvio.ConductorAsignado] = new() { EstadoEnvio.Retirado, EstadoEnvio.Cancelado },
         [EstadoEnvio.Retirado] = new() { EstadoEnvio.EnCamino },
-        [EstadoEnvio.EnCamino] = new() { EstadoEnvio.Retirado },
+        [EstadoEnvio.EnCamino] = new() { EstadoEnvio.Entregado },
         [EstadoEnvio.Entregado] = new(),
         [EstadoEnvio.Cancelado] = new()
 
