@@ -122,6 +122,10 @@ public static class ReglasCompatibilidad
                 desvioKm,
                 Math.Max(0, capacidad.DesvioKm));
 
+    /// <summary>True si el viaje recurrente sale ese día de la semana (lo usa el potencial mensual, HU-20).</summary>
+    public static bool SaleEl(Viaje viaje, DateOnly fecha) =>
+        viaje.DiasSemana.HasFlag(ADiaSemana(fecha.DayOfWeek));
+
     private static DiasSemana ADiaSemana(DayOfWeek dia) => dia switch
     {
         DayOfWeek.Monday => DiasSemana.Lunes,

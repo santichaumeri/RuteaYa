@@ -79,6 +79,9 @@ builder.Services.AddScoped<IOportunidadService, OportunidadService>();
 // OPTIMIZADOR DEL VIAJE (HU-14): oportunidades de una fecha + optimizador + criterio.
 builder.Services.AddScoped<IOptimizacionViajeService, OptimizacionViajeService>();
 
+// POTENCIAL MENSUAL (HU-20): viajes recurrentes del mes + oportunidades + optimizador. No persiste nada.
+builder.Services.AddScoped<IPotencialMensualService, PotencialMensualService>();
+
 // Manejo global de errores (400, 401, 403, 404, 409, 500)
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ManejadorGlobalDeExcepciones>();
