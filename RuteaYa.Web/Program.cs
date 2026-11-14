@@ -70,6 +70,13 @@ builder.Services.AddHttpClient<IOptimizadorApiClient, OptimizadorApiClient>(clie
     client.BaseAddress = new Uri(apiBaseUrl);
 });
 
+builder.Services.AddHttpClient<ITransportesApiClient, TransportesApiClient>(client =>
+{
+    var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
+        ?? throw new InvalidOperationException("Falta la configuración ApiBaseUrl.");
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

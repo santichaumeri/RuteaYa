@@ -120,6 +120,7 @@ else
 }
 
 builder.Services.AddScoped<IAsignacionService, AsignacionService>();
+builder.Services.AddScoped<ITransporteService, TransporteService>();
 
 var app = builder.Build();
 

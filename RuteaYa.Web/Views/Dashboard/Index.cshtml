@@ -10,13 +10,28 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard - RuteaYa</title>
+    @* Aplica el tema antes de pintar para evitar el parpadeo blanco. Preferencia guardada o prefers-color-scheme. *@
+    <script>
+        (function () {
+            var tema = null;
+            try { tema = localStorage.getItem('qz-tema'); } catch (e) { }
+            if (tema !== 'dark' && tema !== 'light') {
+                tema = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            document.documentElement.setAttribute('data-bs-theme', tema);
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
 </head>
 <body class="dashboard-page">
     <div class="dashboard-shell">
         <aside class="dashboard-sidebar">
-            <a class="brand" asp-controller="Dashboard" asp-action="Index">RuteaYa</a>
+            <a class="brand" asp-controller="Dashboard" asp-action="Index"><span class="qz-logo" aria-hidden="true">R</span>RuteaYa</a>
             <nav class="sidebar-nav" aria-label="Menú principal">
                 <a class="sidebar-link active" asp-controller="Dashboard" asp-action="Index">Inicio</a>
                 <a class="sidebar-link" asp-controller="Viajes" asp-action="Index">Mis viajes</a>
@@ -27,7 +42,11 @@
                 <a class="sidebar-link" asp-controller="Historial" asp-action="Index">Historial</a>
             </nav>
             <div class="sidebar-user">
-                <strong>@Model.NombreUsuario</strong>
+                <div class="sidebar-user-top">
+                    <strong>@Model.NombreUsuario</strong>
+                    <button type="button" id="qz-tema-toggle" class="theme-toggle"
+                            aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">&#9790;</button>
+                </div>
                 <form asp-controller="Account" asp-action="Logout" method="post">
                     <button class="logout-button" type="submit">Cerrar sesión</button>
                 </form>
@@ -128,5 +147,6 @@
             </section>
         </main>
     </div>
+    <script src="~/js/site.js" asp-append-version="true"></script>
 </body>
 </html>

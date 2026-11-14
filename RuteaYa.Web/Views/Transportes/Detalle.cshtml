@@ -1,0 +1,42 @@
+@model RuteaYa.Logica.Dtos.Transportes.TransporteDto
+
+@{
+    ViewData["Title"] = $"Envío #{Model.EnvioId}";
+}
+
+<div class="container py-4" style="max-width: 720px;">
+    <a asp-action="Index" class="text-decoration-none">&larr; Volver a mis transportes</a>
+
+    <div class="card border-0 shadow-sm mt-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <h3 class="fw-bold mb-0">Envío #@Model.EnvioId</h3>
+                <partial name="_EstadoBadge" model="Model.Estado" />
+            </div>
+
+            <dl class="row mb-0">
+                <dt class="col-sm-4">Descripción</dt>
+                <dd class="col-sm-8">@Model.Descripcion</dd>
+
+                <dt class="col-sm-4">Peso</dt>
+                <dd class="col-sm-8">@Model.PesoKg kg</dd>
+
+                <dt class="col-sm-4">Origen</dt>
+                <dd class="col-sm-8">@Model.Origen</dd>
+
+                <dt class="col-sm-4">Destino</dt>
+                <dd class="col-sm-8">@Model.Destino</dd>
+
+                <dt class="col-sm-4">Viaje</dt>
+                <dd class="col-sm-8">
+                    <a asp-controller="Viajes" asp-action="Detalle" asp-route-id="@Model.ViajeId">
+                        #@Model.ViajeId (@Model.ViajeOrigen → @Model.ViajeDestino)
+                    </a>
+                </dd>
+
+                <dt class="col-sm-4">Ganancia</dt>
+                <dd class="col-sm-8 fw-bold text-success">$@Model.Ganancia.ToString("N2")</dd>
+            </dl>
+        </div>
+    </div>
+</div>

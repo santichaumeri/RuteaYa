@@ -1,0 +1,24 @@
+@using RuteaYa.Entidades.Enums
+@model EstadoEnvio
+
+@switch (Model)
+{
+    case EstadoEnvio.ConductorAsignado:
+        <span class="badge bg-info text-dark">Conductor asignado</span>
+        break;
+    case EstadoEnvio.Retirado:
+        <span class="badge bg-primary">Retirado</span>
+        break;
+    case EstadoEnvio.EnCamino:
+        <span class="badge bg-primary">En camino</span>
+        break;
+    case EstadoEnvio.Entregado:
+        <span class="badge bg-success">Entregado</span>
+        break;
+    case EstadoEnvio.Cancelado:
+        <span class="badge bg-danger">Cancelado</span>
+        break;
+    default:
+        <span class="badge bg-secondary">@Model</span>
+        break;
+}

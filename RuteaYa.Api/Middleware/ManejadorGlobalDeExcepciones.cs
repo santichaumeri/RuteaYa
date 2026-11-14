@@ -28,6 +28,7 @@ public class ManejadorGlobalDeExcepciones : IExceptionHandler
             NotFoundException => (StatusCodes.Status404NotFound, "No encontrado"),
             ConflictException => (StatusCodes.Status409Conflict, "Conflicto"),
             CombinacionConflictoException => (StatusCodes.Status409Conflict, "Conflicto"),
+            TransicionEstadoInvalidaException => (StatusCodes.Status409Conflict, "Conflicto"),
             DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "Conflicto de concurrencia"),
             _ => (StatusCodes.Status500InternalServerError, "Error interno")
         };
