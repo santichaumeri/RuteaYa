@@ -3,9 +3,7 @@ using RuteaYa.Entidades;
 using RuteaYa.Entidades.Enums;
 using RuteaYa.Logica.Data;
 using RuteaYa.Logica.Dtos.Envios;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using RuteaYa.Logica.Excepciones;
 
 namespace RuteaYa.Logica.Servicios
 {
@@ -13,11 +11,14 @@ namespace RuteaYa.Logica.Servicios
     {
         private readonly RuteaYaDbContext _context;
         private readonly IEstadoEnvioService _estadoEnvioService;
+        private readonly TimeProvider _reloj;
 
-        public EnvioService(RuteaYaDbContext context, IEstadoEnvioService estadoEnvioService)
+        /// <param name="reloj">Fuente de "hoy". Se inyecta para poder fijar la fecha en los tests.</param>
+        public EnvioService(RuteaYaDbContext context, IEstadoEnvioService estadoEnvioService, TimeProvider? reloj = null)
         {
             _context = context;
             _estadoEnvioService = estadoEnvioService;
+            _reloj = reloj ?? TimeProvider.System;
         }
 
         public async Task<EnvioDetalleDto> CrearEnvioAsync(CrearEnvioDto dto, int usuarioId)
@@ -25,27 +26,27 @@ namespace RuteaYa.Logica.Servicios
             // Validaciones de negocio defensivas a nivel servicio
             if (string.IsNullOrWhiteSpace(dto.Origen) || string.IsNullOrWhiteSpace(dto.Destino))
             {
-                throw new ArgumentException("El origen y el destino son obligatorios.");
+                throw new ValidacionException("El origen y el destino son obligatorios.");
             }
 
             if (dto.Origen.Trim().Equals(dto.Destino.Trim(), StringComparison.OrdinalIgnoreCase))
             {
-                throw new ArgumentException("El origen y el destino no pueden ser iguales.");
+                throw new ValidacionException("El origen y el destino no pueden ser iguales.");
             }
 
-            if (dto.Fecha < DateOnly.FromDateTime(DateTime.Today))
+            if (dto.Fecha < DateOnly.FromDateTime(_reloj.GetLocalNow().DateTime))
             {
-                throw new ArgumentException("La fecha no puede ser anterior a la actual.");
+                throw new ValidacionException("La fecha no puede ser anterior a la actual.");
             }
 
             if (dto.PesoKg <= 0)
             {
-                throw new ArgumentException("El peso debe ser mayor a 0.");
+                throw new ValidacionException("El peso debe ser mayor a 0.");
             }
 
             if (dto.MontoOfrecido <= 0)
             {
-                throw new ArgumentException("El monto ofrecido debe ser mayor a 0.");
+                throw new ValidacionException("El monto ofrecido debe ser mayor a 0.");
             }
 
             var nuevoEnvio = new Envio
@@ -136,10 +137,10 @@ namespace RuteaYa.Logica.Servicios
 
             if( envio == null) 
             { 
-                throw new KeyNotFoundException($"No se encontró el envío con Id {id} para el usuario autenticado"); 
+                throw new NotFoundException($"No se encontró el envío con Id {id} para el usuario autenticado"); 
             }
 
-            // Valida la transición usando la máquina de estados de la HU-09
+            // Valida la transición usando la máquina de estados de la HU-09 (409 si no corresponde)
             _estadoEnvioService.ValidarTransicion(envio.Estado, EstadoEnvio.Cancelado);
 
             envio.Estado = EstadoEnvio.Cancelado;
