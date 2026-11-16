@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RuteaYa.Entidades.Enums;
 using RuteaYa.Logica.Data;
 using RuteaYa.Logica.Dtos.Dashboard;
+using RuteaYa.Logica.Dtos.Oportunidades;
 using RuteaYa.Logica.Optimizacion.Criterios;
 
 namespace RuteaYa.Logica.Servicios;
@@ -9,10 +10,12 @@ namespace RuteaYa.Logica.Servicios;
 /// <summary>
 /// Resumen de la pantalla principal (HU-03). El potencial del mes reutiliza el cálculo de HU-20,
 /// así la tarjeta del dashboard y la pantalla 14 muestran siempre el mismo número.
+/// Las oportunidades reutilizan la búsqueda de HU-11, así la tarjeta coincide con la pantalla de Oportunidades.
 /// </summary>
 public sealed class DashboardService(
     RuteaYaDbContext dbContext,
     IPotencialMensualService potencialMensualService,
+    IOportunidadService oportunidadService,
     TimeProvider reloj) : IDashboardService
 {
     public async Task<DashboardResumenDto?> ObtenerResumenAsync(
@@ -73,12 +76,17 @@ public sealed class DashboardService(
             })
             .ToListAsync(cancellationToken);
 
-        var cantidadViajes = await dbContext.Viajes
-            .CountAsync(x => x.UsuarioId == usuarioId && x.Estado == EstadoViaje.Activo, cancellationToken);
+        var idsViajesActivos = await dbContext.Viajes
+            .AsNoTracking()
+            .Where(x => x.UsuarioId == usuarioId && x.Estado == EstadoViaje.Activo)
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken);
         var cantidadEnvios = await dbContext.Envios
             .CountAsync(x => x.UsuarioId == usuarioId
                 && x.Estado != EstadoEnvio.Entregado
                 && x.Estado != EstadoEnvio.Cancelado, cancellationToken);
+
+        var oportunidades = await ContarOportunidadesAsync(idsViajesActivos, usuarioId, cancellationToken);
 
         // Mes en curso con el criterio por defecto, igual que la pantalla 14 al abrirse.
         var hoy = reloj.GetLocalNow();
@@ -88,13 +96,34 @@ public sealed class DashboardService(
         return new DashboardResumenDto
         {
             NombreUsuario = usuario.Nombre,
-            ProximosViajes = cantidadViajes,
+            ProximosViajes = idsViajesActivos.Count,
             EnviosPendientes = cantidadEnvios,
-            Oportunidades = 0,
+            Oportunidades = oportunidades,
             PotencialMes = potencial.GananciaPotencial,
             Viajes = viajes,
             Envios = envios
         };
+    }
+
+    /// <summary>
+    /// Envíos disponibles que el usuario puede llevar en alguno de sus viajes activos.
+    /// Un mismo envío puede servirle a más de un viaje: se cuenta una sola vez.
+    /// </summary>
+    private async Task<int> ContarOportunidadesAsync(
+        IReadOnlyList<int> idsViajesActivos,
+        int usuarioId,
+        CancellationToken cancellationToken)
+    {
+        var enviosCompatibles = new HashSet<int>();
+
+        foreach (var viajeId in idsViajesActivos)
+        {
+            var oportunidades = await oportunidadService.BuscarAsync(
+                viajeId, usuarioId, OrdenOportunidades.Ganancia, cancellationToken);
+            enviosCompatibles.UnionWith(oportunidades.Select(x => x.EnvioId));
+        }
+
+        return enviosCompatibles.Count;
     }
 
     private static string FormatearDias(DiasSemana dias)
