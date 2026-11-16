@@ -19,101 +19,68 @@ public class AsignacionService : IAsignacionService
     private readonly RuteaYaDbContext _dbContext;
     private readonly IEstadoEnvioService _estadoEnvioService;
     private readonly IRoutingService _routingService;
+    private readonly IOportunidadService _oportunidadService;
     private readonly TimeProvider _reloj;
 
     public AsignacionService(
         RuteaYaDbContext dbContext,
         IEstadoEnvioService estadoEnvioService,
         IRoutingService routingService,
+        IOportunidadService oportunidadService,
         TimeProvider? reloj = null)
     {
         _dbContext = dbContext;
         _estadoEnvioService = estadoEnvioService;
         _routingService = routingService;
+        _oportunidadService = oportunidadService;
         _reloj = reloj ?? TimeProvider.System;
     }
 
-    public async Task<AsignacionDetalleDto> AceptarOportunidadAsync(int usuarioId, AsignarOportunidadRequestDto dto)
+    /// <summary>
+    /// Acepta un envío para un viaje (HU-16). La compatibilidad se evalúa con las mismas reglas que el listado
+    /// y el detalle de oportunidades (HU-11/12): día del viaje, fecha no pasada, envío disponible y ajeno, y la
+    /// capacidad, el peso y el desvío que le quedan al viaje <b>en la fecha del envío</b>.
+    /// Si algo no se cumple lanza ConflictException con los motivos (409).
+    /// </summary>
+    public async Task<AsignacionDetalleDto> AceptarOportunidadAsync(
+        int usuarioId,
+        AsignarOportunidadRequestDto dto,
+        CancellationToken cancellationToken = default)
     {
-        // 1. Obtener y validar el viaje
-        var viaje = await _dbContext.Viajes
-            .Include(v => v.Paradas)
-            .Include(v => v.Asignaciones)
-                .ThenInclude(a => a.Envio)
-            .FirstOrDefaultAsync(v => v.Id == dto.ViajeId);
+        if (dto is null)
+            throw new ValidacionException("Los datos de la asignación son obligatorios.");
 
-        if (viaje == null)
-            throw new KeyNotFoundException("El viaje especificado no existe.");
+        // Misma evaluación que muestra la pantalla de detalle: lanza NotFound (404) o AccesoDenegado (403)
+        // y, si algo dejó de cumplirse, PuedeAceptarse es false con los motivos.
+        var evaluacion = await _oportunidadService.ObtenerDetalleAsync(dto.ViajeId, dto.EnvioId, usuarioId, cancellationToken);
 
-        if (viaje.UsuarioId != usuarioId)
-            throw new UnauthorizedAccessException("No tenés permisos para gestionar este viaje.");
+        if (!evaluacion.PuedeAceptarse)
+            throw new ConflictException("No se puede aceptar el envío. " + string.Join(" ", evaluacion.MotivosBloqueo));
 
-        if (viaje.Estado != EstadoViaje.Activo)
-            throw new InvalidOperationException("No se pueden asignar envíos a un viaje inactivo.");
+        var envio = await _dbContext.Envios.SingleAsync(e => e.Id == dto.EnvioId, cancellationToken);
 
-        // 2. Obtener y validar el envío
-        var envio = await _dbContext.Envios
-            .FirstOrDefaultAsync(e => e.Id == dto.EnvioId);
-
-        if (envio == null)
-            throw new KeyNotFoundException("El envío especificado no existe.");
-
-        if (envio.UsuarioId == usuarioId)
-            throw new InvalidOperationException("No podés aceptar un envío publicado por vos mismo.");
-
-        if (envio.Estado != EstadoEnvio.BuscandoConductor)
-            throw new InvalidOperationException("El envío no está disponible (ya fue asignado o cancelado).");
-
-        // 3. Validar capacidad del viaje (paquetes y peso)
-        var paquetesActuales = viaje.Asignaciones.Count;
-
-        if (paquetesActuales + 1 > viaje.MaxPaquetes)
-            throw new InvalidOperationException($"El viaje alcanzó el cupo máximo de paquetes ({viaje.MaxPaquetes}).");
-
-        var pesoActual = viaje.Asignaciones.Sum(a => a.Envio.PesoKg);
-
-        if (pesoActual + envio.PesoKg > viaje.PesoMaximoKg)
-            throw new InvalidOperationException($"El envío excede el peso máximo permitido para este viaje ({viaje.PesoMaximoKg} kg).");
-
-        // 4. Calcular y validar desvío
-        var paradasNombres = viaje.Paradas.OrderBy(p => p.Orden).Select(p => p.Direccion).ToList();
-        var calculoDesvio = await _routingService.CalcularDesvioAsync(
-            viaje.Origen,
-            paradasNombres,
-            viaje.Destino,
-            envio.Origen, 
-            envio.Destino
-            );
-
-        if((decimal)calculoDesvio.DesvioKm > viaje.DesvioMaximoKm)
-        {
-            throw new InvalidOperationException($"El desvío resultante ({calculoDesvio.DesvioKm} km) supera el máximo tolerado ({viaje.DesvioMaximoKm} km).");
-        }
-
-        // 5. Validar transición de estado
         _estadoEnvioService.ValidarTransicion(envio.Estado, EstadoEnvio.ConductorAsignado);
 
-        // 6.Transacción para aplicar cambios atómicos y persistir
-        using var transaccion = await _dbContext.Database.BeginTransactionAsync();
+        using var transaccion = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         try
         {
             envio.Estado = EstadoEnvio.ConductorAsignado;
 
-            // Crear asignación
             var asignacion = new Asignacion
             {
-                ViajeId = viaje.Id,
+                ViajeId = dto.ViajeId,
                 EnvioId = envio.Id,
                 FechaAsignacion = DateTime.UtcNow,
-                DesvioKm = (decimal)calculoDesvio.DesvioKm,
+                // El mismo desvío que se usó para validar y que después descuenta la capacidad del día.
+                DesvioKm = evaluacion.DesvioKm,
                 Ganancia = envio.MontoOfrecido
             };
 
             _dbContext.Asignaciones.Add(asignacion);
 
-            await _dbContext.SaveChangesAsync();
-            await transaccion.CommitAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            await transaccion.CommitAsync(cancellationToken);
 
             return new AsignacionDetalleDto
             {
@@ -125,17 +92,13 @@ public class AsignacionService : IAsignacionService
                 Ganancia = asignacion.Ganancia,
                 EstadoEnvio = envio.Estado.ToString()
             };
-
         }
-        catch (DbUpdateConcurrencyException)
+        catch (DbUpdateException)
         {
-            await transaccion.RollbackAsync();
-            throw new InvalidOperationException("El envío ya fue modificado o tomado por otro conductor en simultáneo.");
-        }
-        catch(DbUpdateException)
-        {
-            await transaccion.RollbackAsync();
-            throw new InvalidOperationException("El envío ya se encuentra asignado a un viaje.");
+            // Otro conductor tomó el envío entre la validación y el guardado: lo frenan el RowVersion
+            // (DbUpdateConcurrencyException) o el índice único de Asignaciones.EnvioId.
+            await transaccion.RollbackAsync(CancellationToken.None);
+            throw new ConflictException("Otro conductor tomó este envío recién. Elegí otra oportunidad.");
         }
     }
 
