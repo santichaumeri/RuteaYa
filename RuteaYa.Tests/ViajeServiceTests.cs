@@ -5,6 +5,7 @@ using RuteaYa.Logica.Data;
 using RuteaYa.Logica.Dtos;
 using RuteaYa.Logica.Excepciones;
 using RuteaYa.Logica.Servicios;
+using RuteaYa.Logica.Servicios.Rutas;
 using Xunit;
 
 namespace RuteaYa.Tests;
@@ -21,7 +22,7 @@ public sealed class ViajeServiceTests
             new Viaje { Id = 3, UsuarioId = 2, Origen = "E", Destino = "F", Estado = EstadoViaje.Activo });
         await dbContext.SaveChangesAsync();
 
-        var service = new ViajeService(dbContext);
+        var service = new ViajeService(dbContext, new MockRoutingService());
 
         var activos = await service.ObtenerMisViajesAsync(1, EstadoViaje.Activo, CancellationToken.None);
         var todos = await service.ObtenerMisViajesAsync(1, null, CancellationToken.None);
@@ -39,7 +40,7 @@ public sealed class ViajeServiceTests
         dbContext.Viajes.Add(new Viaje { Id = 1, UsuarioId = 1, Estado = EstadoViaje.Activo });
         await dbContext.SaveChangesAsync();
 
-        await new ViajeService(dbContext).DesactivarViajeAsync(1, 1, CancellationToken.None);
+        await new ViajeService(dbContext, new MockRoutingService()).DesactivarViajeAsync(1, 1, CancellationToken.None);
 
         Assert.Equal(EstadoViaje.Inactivo, (await dbContext.Viajes.SingleAsync()).Estado);
     }
@@ -52,7 +53,7 @@ public sealed class ViajeServiceTests
             new Viaje { Id = 1, UsuarioId = 1, Estado = EstadoViaje.Activo },
             new Viaje { Id = 2, UsuarioId = 1, Estado = EstadoViaje.Inactivo });
         await dbContext.SaveChangesAsync();
-        var service = new ViajeService(dbContext);
+        var service = new ViajeService(dbContext, new MockRoutingService());
 
         await Assert.ThrowsAsync<NotFoundException>(() => service.DesactivarViajeAsync(2, 1, CancellationToken.None));
         await Assert.ThrowsAsync<ConflictException>(() => service.DesactivarViajeAsync(1, 2, CancellationToken.None));
@@ -62,7 +63,7 @@ public sealed class ViajeServiceTests
     public async Task CrearViaje_guarda_el_viaje_con_dos_paradas_en_orden_secuencial()
     {
         await using var dbContext = CrearDbContext();
-        var service = new ViajeService(dbContext);
+        var service = new ViajeService(dbContext, new MockRoutingService());
         var request = new CrearViajeRequest
         {
             Origen = "Belgrano",
@@ -112,7 +113,7 @@ public sealed class ViajeServiceTests
     public async Task CrearViaje_rechaza_origen_igual_destino_y_dias_sin_seleccionar()
     {
         await using var dbContext = CrearDbContext();
-        var service = new ViajeService(dbContext);
+        var service = new ViajeService(dbContext, new MockRoutingService());
         var request = CrearRequestValida();
         request.Origen = "Rosario";
         request.Destino = " rosario ";
@@ -135,7 +136,7 @@ public sealed class ViajeServiceTests
         int horaSalida, int minutoSalida, int horaLlegada, int minutoLlegada)
     {
         await using var dbContext = CrearDbContext();
-        var service = new ViajeService(dbContext);
+        var service = new ViajeService(dbContext, new MockRoutingService());
         var request = CrearRequestValida();
         request.HoraSalida = new TimeSpan(horaSalida, minutoSalida, 0);
         request.HoraLlegada = new TimeSpan(horaLlegada, minutoLlegada, 0);
@@ -151,7 +152,7 @@ public sealed class ViajeServiceTests
     public async Task EditarViaje_rechaza_llegada_anterior_a_la_salida()
     {
         await using var dbContext = CrearDbContext();
-        var service = new ViajeService(dbContext);
+        var service = new ViajeService(dbContext, new MockRoutingService());
         var creado = await service.CrearViajeAsync(7, CrearRequestValida(), CancellationToken.None);
 
         var request = new EditarViajeRequest
@@ -179,7 +180,7 @@ public sealed class ViajeServiceTests
     public async Task ObtenerDetalle_devuelve_datos_y_paradas_ordenadas()
     {
         await using var dbContext = CrearDbContext();
-        var service = new ViajeService(dbContext);
+        var service = new ViajeService(dbContext, new MockRoutingService());
         var creado = await service.CrearViajeAsync(7, new CrearViajeRequest
         {
             Origen = "Belgrano",
@@ -222,7 +223,7 @@ public sealed class ViajeServiceTests
     public async Task ObtenerDetalle_rechaza_acceso_de_otro_usuario()
     {
         await using var dbContext = CrearDbContext();
-        var service = new ViajeService(dbContext);
+        var service = new ViajeService(dbContext, new MockRoutingService());
         var creado = await service.CrearViajeAsync(
             7,
             CrearRequestValida(),
@@ -238,7 +239,7 @@ public sealed class ViajeServiceTests
     public async Task EditarViaje_actualiza_datos_y_reemplaza_paradas_en_orden()
     {
         await using var dbContext = CrearDbContext();
-        var service = new ViajeService(dbContext);
+        var service = new ViajeService(dbContext, new MockRoutingService());
         var creado = await service.CrearViajeAsync(
             7,
             new CrearViajeRequest
@@ -307,7 +308,7 @@ public sealed class ViajeServiceTests
     public async Task EditarViaje_rechaza_datos_invalidos()
     {
         await using var dbContext = CrearDbContext();
-        var service = new ViajeService(dbContext);
+        var service = new ViajeService(dbContext, new MockRoutingService());
         var creado = await service.CrearViajeAsync(
             7,
             CrearRequestValida(),
@@ -327,6 +328,58 @@ public sealed class ViajeServiceTests
 
         await Assert.ThrowsAsync<ValidacionException>(() =>
             service.EditarViajeAsync(creado.Id, 7, request, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CalcularRuta_suma_los_tramos_en_el_orden_de_las_paradas()
+    {
+        await using var dbContext = CrearDbContext();
+        var service = new ViajeService(dbContext, new MockRoutingService());
+
+        // Distancias conocidas del mock: Moron-Haedo 3 km y Haedo-CABA 19 km. 1.5 min por km.
+        var ruta = await service.CalcularRutaAsync(
+            new RutaViajeRequest { Origen = " Moron ", Destino = "CABA", Paradas = [" Haedo "] },
+            CancellationToken.None);
+
+        Assert.Equal(22m, ruta.DistanciaKm);
+        Assert.Equal(33, ruta.DuracionMinutos);
+        Assert.Equal(["Moron", "Haedo", "CABA"], ruta.Puntos);
+    }
+
+    [Theory]
+    [InlineData("", "CABA", new string[0], "El origen es obligatorio.")]
+    [InlineData("Moron", "moron", new string[0], "El origen y el destino deben ser diferentes.")]
+    [InlineData("Moron", "CABA", new[] { "Haedo", "haedo" }, "No se pueden repetir direcciones de paradas.")]
+    [InlineData("Moron", "CABA", new[] { "CABA" }, "Una parada no puede coincidir con el origen ni con el destino.")]
+    public async Task CalcularRuta_valida_el_recorrido_con_las_reglas_del_alta(
+        string origen, string destino, string[] paradas, string mensaje)
+    {
+        await using var dbContext = CrearDbContext();
+        var service = new ViajeService(dbContext, new MockRoutingService());
+
+        var error = await Assert.ThrowsAsync<ValidacionException>(() => service.CalcularRutaAsync(
+            new RutaViajeRequest { Origen = origen, Destino = destino, Paradas = [.. paradas] },
+            CancellationToken.None));
+
+        Assert.Equal(mensaje, error.Message);
+    }
+
+    [Fact]
+    public async Task ObtenerDetalle_incluye_la_ruta_con_las_paradas_guardadas()
+    {
+        await using var dbContext = CrearDbContext();
+        var service = new ViajeService(dbContext, new MockRoutingService());
+        var request = CrearRequestValida();
+        request.Origen = "Moron";
+        request.Destino = "CABA";
+        request.Paradas = [new CrearParadaRequest { Direccion = "Haedo" }];
+        var creado = await service.CrearViajeAsync(7, request, CancellationToken.None);
+
+        var detalle = await service.ObtenerDetalleAsync(creado.Id, 7, CancellationToken.None);
+
+        Assert.NotNull(detalle.Ruta);
+        Assert.Equal(22m, detalle.Ruta.DistanciaKm);
+        Assert.Equal(["Moron", "Haedo", "CABA"], detalle.Ruta.Puntos);
     }
 
     private static CrearViajeRequest CrearRequestValida() => new()

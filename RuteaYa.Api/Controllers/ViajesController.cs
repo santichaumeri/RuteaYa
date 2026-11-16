@@ -99,6 +99,18 @@ public sealed class ViajesController(IViajeService viajeService) : ControllerBas
         return StatusCode(StatusCodes.Status201Created, viaje);
     }
 
+    /// <summary>Calcula la ruta de un recorrido sin guardar el viaje (botón "Calcular ruta" de la pantalla 4).</summary>
+    [HttpPost("ruta")]
+    [ProducesResponseType(typeof(RutaViajeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<RutaViajeResponse>> CalcularRuta(
+        RutaViajeRequest request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await viajeService.CalcularRutaAsync(request, cancellationToken));
+    }
+
     [HttpPost("{id:int}/desactivar")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

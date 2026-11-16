@@ -4,10 +4,17 @@ using RuteaYa.Entidades.Enums;
 using RuteaYa.Logica.Data;
 using RuteaYa.Logica.Dtos;
 using RuteaYa.Logica.Excepciones;
+using RuteaYa.Logica.Servicios.Rutas;
 
 namespace RuteaYa.Logica.Servicios;
 
-public sealed class ViajeService(RuteaYaDbContext dbContext) : IViajeService
+/// <summary>
+/// Alta, edición y consulta de viajes. La ruta se calcula con <see cref="IRoutingService"/>,
+/// así el viaje no depende del proveedor de mapas (o del mock).
+/// </summary>
+public sealed class ViajeService(
+    RuteaYaDbContext dbContext,
+    IRoutingService routingService) : IViajeService
 {
     private const DiasSemana DiasSemanaValidos =
         DiasSemana.Lunes
@@ -83,7 +90,7 @@ public sealed class ViajeService(RuteaYaDbContext dbContext) : IViajeService
 
         ValidarAcceso(viaje, usuarioId);
 
-        return ADetalleResponse(viaje);
+        return ADetalleResponse(viaje, await CalcularRutaDelViajeAsync(viaje));
     }
 
     public async Task<IReadOnlyCollection<ViajeResponse>> ObtenerMisViajesAsync(
@@ -187,7 +194,46 @@ public sealed class ViajeService(RuteaYaDbContext dbContext) : IViajeService
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return ADetalleResponse(viaje);
+        return ADetalleResponse(viaje, await CalcularRutaDelViajeAsync(viaje));
+    }
+
+    public async Task<RutaViajeResponse> CalcularRutaAsync(
+        RutaViajeRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null)
+        {
+            throw new ValidacionException("Los datos del recorrido son obligatorios.");
+        }
+
+        var origen = NormalizarDireccion(request.Origen);
+        var destino = NormalizarDireccion(request.Destino);
+        ValidarRecorrido(origen, destino);
+
+        var paradas = (request.Paradas ?? [])
+            .Select(NormalizarDireccion)
+            .ToList();
+        ValidarParadas(paradas, origen, destino);
+
+        return await CalcularRutaAsync(origen, paradas, destino);
+    }
+
+    private Task<RutaViajeResponse> CalcularRutaDelViajeAsync(Viaje viaje) =>
+        CalcularRutaAsync(
+            viaje.Origen,
+            viaje.Paradas.OrderBy(parada => parada.Orden).Select(parada => parada.Direccion).ToList(),
+            viaje.Destino);
+
+    private async Task<RutaViajeResponse> CalcularRutaAsync(string origen, List<string> paradas, string destino)
+    {
+        var ruta = await routingService.CalcularRutaConParadasAsync(origen, paradas, destino);
+
+        return new RutaViajeResponse
+        {
+            DistanciaKm = Math.Round((decimal)ruta.DistanciaKm, 2),
+            DuracionMinutos = (int)Math.Round(ruta.DuracionEstimada.TotalMinutes),
+            Puntos = ruta.PuntosRecorridos
+        };
     }
 
     private static void ValidarDatosGenerales(
@@ -200,20 +246,7 @@ public sealed class ViajeService(RuteaYaDbContext dbContext) : IViajeService
         string origen,
         string destino)
     {
-        if (origen.Length == 0)
-        {
-            throw new ValidacionException("El origen es obligatorio.");
-        }
-
-        if (destino.Length == 0)
-        {
-            throw new ValidacionException("El destino es obligatorio.");
-        }
-
-        if (string.Equals(origen, destino, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ValidacionException("El origen y el destino deben ser diferentes.");
-        }
+        ValidarRecorrido(origen, destino);
 
         if (diasSemana == DiasSemana.Ninguno
             || (diasSemana & ~DiasSemanaValidos) != DiasSemana.Ninguno)
@@ -250,6 +283,24 @@ public sealed class ViajeService(RuteaYaDbContext dbContext) : IViajeService
         if (desvioMaximoKm <= 0)
         {
             throw new ValidacionException("El desvío máximo debe ser mayor a cero.");
+        }
+    }
+
+    private static void ValidarRecorrido(string origen, string destino)
+    {
+        if (origen.Length == 0)
+        {
+            throw new ValidacionException("El origen es obligatorio.");
+        }
+
+        if (destino.Length == 0)
+        {
+            throw new ValidacionException("El destino es obligatorio.");
+        }
+
+        if (string.Equals(origen, destino, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ValidacionException("El origen y el destino deben ser diferentes.");
         }
     }
 
@@ -332,7 +383,7 @@ public sealed class ViajeService(RuteaYaDbContext dbContext) : IViajeService
             .ToList()
     };
 
-    private static ViajeDetalleResponse ADetalleResponse(Viaje viaje) => new()
+    private static ViajeDetalleResponse ADetalleResponse(Viaje viaje, RutaViajeResponse ruta) => new()
     {
         Id = viaje.Id,
         UsuarioId = viaje.UsuarioId,
@@ -346,6 +397,7 @@ public sealed class ViajeService(RuteaYaDbContext dbContext) : IViajeService
         DesvioMaximoKm = viaje.DesvioMaximoKm,
         Estado = viaje.Estado,
         CantidadPaquetesAsignados = viaje.Asignaciones.Count,
+        Ruta = ruta,
         Paradas = viaje.Paradas
             .OrderBy(parada => parada.Orden)
             .Select(parada => new ParadaResponse

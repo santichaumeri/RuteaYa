@@ -8,6 +8,9 @@ namespace RuteaYa.Web.Controllers;
 [Authorize]
 public sealed class ViajesController(IViajesApiClient viajesApiClient) : Controller
 {
+    /// <summary>Valor del botón "Calcular ruta": el formulario se envía pero no se guarda.</summary>
+    private const string AccionCalcularRuta = "calcular-ruta";
+
     [HttpGet]
     public async Task<IActionResult> Index(string estado = "activos", CancellationToken cancellationToken = default)
     {
@@ -46,16 +49,24 @@ public sealed class ViajesController(IViajesApiClient viajesApiClient) : Control
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Crear(
         CrearViajeViewModel modelo,
+        string? accion,
         CancellationToken cancellationToken)
     {
+        if (accion == AccionCalcularRuta)
+        {
+            modelo.Ruta = await CalcularRutaAsync(modelo.Origen, modelo.Destino, modelo.Paradas, cancellationToken);
+            return View(modelo);
+        }
+
         if (!ModelState.IsValid)
         {
             return View(modelo);
         }
 
+        ViajeResponseViewModel creado;
         try
         {
-            await viajesApiClient.CrearViajeAsync(modelo, cancellationToken);
+            creado = await viajesApiClient.CrearViajeAsync(modelo, cancellationToken);
         }
         catch (ApiException ex)
         {
@@ -63,8 +74,9 @@ public sealed class ViajesController(IViajesApiClient viajesApiClient) : Control
             return View(modelo);
         }
 
+        // El detalle muestra la ruta calculada del viaje recién guardado.
         TempData["MensajeViaje"] = "Viaje creado correctamente.";
-        return RedirectToAction("Index", "Dashboard");
+        return RedirectToAction(nameof(Detalle), new { id = creado.Id });
     }
 
     [HttpGet]
@@ -112,9 +124,16 @@ public sealed class ViajesController(IViajesApiClient viajesApiClient) : Control
     public async Task<IActionResult> Editar(
         int id,
         EditarViajeViewModel modelo,
+        string? accion,
         CancellationToken cancellationToken)
     {
         modelo.Id = id;
+
+        if (accion == AccionCalcularRuta)
+        {
+            modelo.Ruta = await CalcularRutaAsync(modelo.Origen, modelo.Destino, modelo.Paradas, cancellationToken);
+            return View(modelo);
+        }
 
         if (!ModelState.IsValid)
         {
@@ -139,6 +158,39 @@ public sealed class ViajesController(IViajesApiClient viajesApiClient) : Control
         return RedirectToAction(nameof(Detalle), new { id });
     }
 
+    /// <summary>
+    /// Calcula la ruta con lo que haya cargado en el formulario, sin guardar el viaje.
+    /// Solo importa el recorrido: los errores de días, horarios o capacidad se muestran al guardar.
+    /// </summary>
+    private async Task<RutaViajeViewModel?> CalcularRutaAsync(
+        string? origen,
+        string? destino,
+        List<string> paradas,
+        CancellationToken cancellationToken)
+    {
+        ModelState.Clear();
+
+        if (string.IsNullOrWhiteSpace(origen) || string.IsNullOrWhiteSpace(destino))
+        {
+            ModelState.AddModelError(string.Empty, "Completá el origen y el destino para calcular la ruta.");
+            return null;
+        }
+
+        try
+        {
+            return await viajesApiClient.CalcularRutaAsync(
+                origen,
+                destino,
+                paradas.Select(parada => parada ?? string.Empty).ToList(),
+                cancellationToken);
+        }
+        catch (ApiException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return null;
+        }
+    }
+
     private static EditarViajeViewModel ConvertirAEditar(ViajeDetalleViewModel detalle)
     {
         var dias = new[] { 1, 2, 4, 8, 16, 32, 64 }
@@ -159,7 +211,8 @@ public sealed class ViajesController(IViajesApiClient viajesApiClient) : Control
             Paradas = detalle.Paradas
                 .OrderBy(parada => parada.Orden)
                 .Select(parada => parada.Direccion)
-                .ToList()
+                .ToList(),
+            Ruta = detalle.Ruta
         };
     }
 

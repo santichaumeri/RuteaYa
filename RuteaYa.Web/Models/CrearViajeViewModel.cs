@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace RuteaYa.Web.Models;
 
@@ -38,6 +39,10 @@ public sealed class CrearViajeViewModel : IValidatableObject
     public decimal DesvioMaximoKm { get; set; }
 
     public List<string> Paradas { get; set; } = [];
+
+    /// <summary>Ruta calculada con el botón "Calcular ruta". No viene del formulario.</summary>
+    [BindNever]
+    public RutaViajeViewModel? Ruta { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
         ValidacionHorarioViaje.Validar(HoraSalida, HoraLlegada);

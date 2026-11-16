@@ -30,4 +30,12 @@ public interface IViajeService
         int usuarioId,
         int viajeId,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Calcula la ruta de un recorrido sin guardarlo, para el botón "Calcular ruta" del formulario.
+    /// Valida origen, destino y paradas con las mismas reglas que el alta.
+    /// </summary>
+    Task<RutaViajeResponse> CalcularRutaAsync(
+        RutaViajeRequest request,
+        CancellationToken cancellationToken);
 }

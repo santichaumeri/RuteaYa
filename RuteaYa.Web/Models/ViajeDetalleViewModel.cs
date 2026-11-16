@@ -15,6 +15,7 @@ public sealed class ViajeDetalleViewModel
     public int Estado { get; set; }
     public int CantidadPaquetesAsignados { get; set; }
     public IReadOnlyCollection<ParadaDetalleViewModel> Paradas { get; set; } = [];
+    public RutaViajeViewModel? Ruta { get; set; }
 }
 
 public sealed class ParadaDetalleViewModel

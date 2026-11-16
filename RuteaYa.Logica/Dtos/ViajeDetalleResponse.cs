@@ -17,4 +17,5 @@ public class ViajeDetalleResponse
     public EstadoViaje Estado { get; init; }
     public int CantidadPaquetesAsignados { get; init; }
     public IReadOnlyCollection<ParadaResponse> Paradas { get; init; } = [];
+    public RutaViajeResponse? Ruta { get; init; }
 }
