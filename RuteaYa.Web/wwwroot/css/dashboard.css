@@ -223,6 +223,32 @@ body.dashboard-page {
     color: var(--qz-heading);
 }
 
+/* Tarjeta que lleva a otra pantalla (Potencial del mes → pantalla 14). */
+.summary-card-link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    transition: box-shadow .15s ease, transform .15s ease;
+}
+
+.summary-card-link:hover,
+.summary-card-link:focus-visible {
+    box-shadow: 0 4px 16px var(--qz-shadow);
+    transform: translateY(-1px);
+}
+
+.summary-card-link small {
+    display: block;
+    margin-top: 2px;
+    color: var(--bs-secondary-color);
+    font-size: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .summary-card-link { transition: none; }
+    .summary-card-link:hover, .summary-card-link:focus-visible { transform: none; }
+}
+
 .dashboard-panels {
     display: grid;
     grid-template-columns: 1.08fr .92fr;

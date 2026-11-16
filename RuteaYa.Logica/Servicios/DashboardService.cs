@@ -2,10 +2,18 @@ using Microsoft.EntityFrameworkCore;
 using RuteaYa.Entidades.Enums;
 using RuteaYa.Logica.Data;
 using RuteaYa.Logica.Dtos.Dashboard;
+using RuteaYa.Logica.Optimizacion.Criterios;
 
 namespace RuteaYa.Logica.Servicios;
 
-public sealed class DashboardService(RuteaYaDbContext dbContext) : IDashboardService
+/// <summary>
+/// Resumen de la pantalla principal (HU-03). El potencial del mes reutiliza el cálculo de HU-20,
+/// así la tarjeta del dashboard y la pantalla 14 muestran siempre el mismo número.
+/// </summary>
+public sealed class DashboardService(
+    RuteaYaDbContext dbContext,
+    IPotencialMensualService potencialMensualService,
+    TimeProvider reloj) : IDashboardService
 {
     public async Task<DashboardResumenDto?> ObtenerResumenAsync(
         int usuarioId,
@@ -72,13 +80,18 @@ public sealed class DashboardService(RuteaYaDbContext dbContext) : IDashboardSer
                 && x.Estado != EstadoEnvio.Entregado
                 && x.Estado != EstadoEnvio.Cancelado, cancellationToken);
 
+        // Mes en curso con el criterio por defecto, igual que la pantalla 14 al abrirse.
+        var hoy = reloj.GetLocalNow();
+        var potencial = await potencialMensualService.CalcularAsync(
+            usuarioId, hoy.Year, hoy.Month, CriterioOptimizacion.MaximizarGanancias, cancellationToken);
+
         return new DashboardResumenDto
         {
             NombreUsuario = usuario.Nombre,
             ProximosViajes = cantidadViajes,
             EnviosPendientes = cantidadEnvios,
             Oportunidades = 0,
-            PotencialMes = 0,
+            PotencialMes = potencial.GananciaPotencial,
             Viajes = viajes,
             Envios = envios
         };

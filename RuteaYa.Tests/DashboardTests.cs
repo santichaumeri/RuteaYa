@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using RuteaYa.Entidades;
 using RuteaYa.Entidades.Enums;
 using RuteaYa.Logica.Data;
+using RuteaYa.Logica.Dtos.Potencial;
+using RuteaYa.Logica.Optimizacion.Criterios;
 using RuteaYa.Logica.Servicios;
 using Xunit;
 
@@ -50,7 +52,7 @@ public sealed class DashboardTests
             });
         await dbContext.SaveChangesAsync();
 
-        var resumen = await new DashboardService(dbContext).ObtenerResumenAsync(usuario.Id);
+        var resumen = await CrearServicio(dbContext).ObtenerResumenAsync(usuario.Id);
 
         Assert.NotNull(resumen);
         Assert.Equal("Juan", resumen.NombreUsuario);
@@ -76,13 +78,44 @@ public sealed class DashboardTests
             new Envio { UsuarioId = usuario.Id, Estado = EstadoEnvio.Cancelado });
         await dbContext.SaveChangesAsync();
 
-        var resumen = await new DashboardService(dbContext).ObtenerResumenAsync(usuario.Id);
+        var resumen = await CrearServicio(dbContext).ObtenerResumenAsync(usuario.Id);
 
         Assert.NotNull(resumen);
         Assert.Equal(0, resumen.ProximosViajes);
         Assert.Empty(resumen.Viajes);
         Assert.Equal(0, resumen.EnviosPendientes);
         Assert.Empty(resumen.Envios);
+    }
+
+    [Fact]
+    public async Task Potencial_del_mes_sale_del_calculo_mensual_del_mes_en_curso()
+    {
+        await using var dbContext = CrearDbContext();
+        dbContext.Usuarios.Add(new Usuario { Id = 1, Nombre = "Juan", Apellido = "Pérez", Email = "juan@example.com" });
+        await dbContext.SaveChangesAsync();
+        var potencial = new PotencialFijo(8500m);
+
+        var resumen = await CrearServicio(dbContext, potencial).ObtenerResumenAsync(1);
+
+        Assert.NotNull(resumen);
+        Assert.Equal(8500m, resumen.PotencialMes);
+        Assert.Equal((1, 2026, 11, CriterioOptimizacion.MaximizarGanancias), potencial.UltimaConsulta);
+    }
+
+    private static DashboardService CrearServicio(RuteaYaDbContext dbContext, PotencialFijo? potencial = null) =>
+        new(dbContext, potencial ?? new PotencialFijo(0m), new RelojFijo(new DateOnly(2026, 11, 9)));
+
+    /// <summary>Doble del potencial mensual: el cálculo real ya se prueba en PotencialMensualServiceTests.</summary>
+    private sealed class PotencialFijo(decimal ganancia) : IPotencialMensualService
+    {
+        public (int UsuarioId, int Anio, int Mes, CriterioOptimizacion Criterio)? UltimaConsulta { get; private set; }
+
+        public Task<PotencialMensualResponse> CalcularAsync(
+            int usuarioId, int anio, int mes, CriterioOptimizacion criterio, CancellationToken cancellationToken)
+        {
+            UltimaConsulta = (usuarioId, anio, mes, criterio);
+            return Task.FromResult(new PotencialMensualResponse { Anio = anio, Mes = mes, GananciaPotencial = ganancia });
+        }
     }
 
     private static RuteaYaDbContext CrearDbContext()

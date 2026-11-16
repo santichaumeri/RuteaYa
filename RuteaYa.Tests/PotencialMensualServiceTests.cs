@@ -46,6 +46,12 @@ public sealed class PotencialMensualServiceTests
         Assert.Equal(Martes17, potencial.MejorRecorrido!.Fecha);
         Assert.Equal([11, 12], potencial.MejorRecorrido.EnvioIds.Order());
         Assert.Equal(3500m, potencial.MejorRecorrido.Ganancia);
+
+        // El detalle trae los datos de cada envío elegido para justificar la ganancia.
+        Assert.Equal([11, 12], potencial.MejorRecorrido.Envios.Select(envio => envio.EnvioId).Order());
+        Assert.Equal(3500m, potencial.MejorRecorrido.Envios.Sum(envio => envio.Pago));
+        Assert.All(potencial.MejorRecorrido.Envios, envio => Assert.Equal("Haedo", envio.Origen));
+        Assert.Empty(potencial.Detalle[2].Envios);
         Assert.True(potencial.EsSimulacion);
     }
 
