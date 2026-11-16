@@ -5,13 +5,8 @@ using RuteaYa.Entidades;
 using RuteaYa.Entidades.Enums;
 using RuteaYa.Logica.Data;
 using RuteaYa.Logica.Dtos.Asignaciones;
-using RuteaYa.Logica.Dtos.Rutas;
 using RuteaYa.Logica.Excepciones;
 using RuteaYa.Logica.Servicios;
-using RuteaYa.Logica.Servicios.Rutas;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using Xunit;
 
 namespace RuteaYa.Tests;
@@ -19,12 +14,10 @@ namespace RuteaYa.Tests;
 public class AsignacionServiceTests
 {
     private readonly Mock<IEstadoEnvioService> _estadoEnvioServiceMock;
-    private readonly Mock<IRoutingService> _routingServiceMock;
 
     public AsignacionServiceTests()
     {
         _estadoEnvioServiceMock = new Mock<IEstadoEnvioService>();
-        _routingServiceMock = new Mock<IRoutingService>();
     }
 
     private RuteaYaDbContext CrearDbContextEnMemoria()
@@ -37,233 +30,258 @@ public class AsignacionServiceTests
         return new RuteaYaDbContext(options);
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // HU-16: aceptar una oportunidad individual. Usa las reglas de compatibilidad por fecha (HU-11/12).
+    // ---------------------------------------------------------------------------------------------
+
+    // Hoy es martes 10/11/2026. El viaje de estos tests sale los martes.
+    private static readonly DateOnly HoyAceptar = new(2026, 11, 10);
+    private static readonly DateOnly Martes17 = new(2026, 11, 17);
+    private static readonly DateOnly Miercoles18 = new(2026, 11, 18);
+    private static readonly DateOnly Martes24 = new(2026, 11, 24);
+
+    private AsignacionService CrearServicioDeAceptacion(RuteaYaDbContext context)
+    {
+        var reloj = new RelojFijo(HoyAceptar);
+        var rutas = new RutasFalsas();
+        return new AsignacionService(
+            context, _estadoEnvioServiceMock.Object, rutas, new OportunidadService(context, rutas, reloj), reloj);
+    }
+
+    private static Viaje CrearViajeDeLosMartes(int maxPaquetes = 3, decimal pesoMaximoKg = 15m, decimal desvioMaximoKm = 5m) => new()
+    {
+        Id = 1,
+        UsuarioId = ConductorId,
+        Origen = "Moron",
+        Destino = "Castelar",
+        DiasSemana = DiasSemana.Martes,
+        MaxPaquetes = maxPaquetes,
+        PesoMaximoKg = pesoMaximoKg,
+        DesvioMaximoKm = desvioMaximoKm,
+        Estado = EstadoViaje.Activo
+    };
+
+    /// <summary>El destino define el desvío (ver RutasFalsas): "Medio" 0,5 km, "A" 2 km, "Cerca" 3 km, "MuyLejos" 6 km.</summary>
+    private static Envio CrearEnvioParaAceptar(
+        int id,
+        DateOnly fecha,
+        string destino = "A",
+        decimal pesoKg = 4m,
+        decimal monto = 2500m,
+        EstadoEnvio estado = EstadoEnvio.BuscandoConductor,
+        int usuarioId = RemitenteId) => new()
+    {
+        Id = id,
+        UsuarioId = usuarioId,
+        Origen = "Moron",
+        Destino = destino,
+        Fecha = fecha,
+        PesoKg = pesoKg,
+        MontoOfrecido = monto,
+        Estado = estado
+    };
+
+    private static AsignarOportunidadRequestDto Aceptar(int envioId) => new() { ViajeId = 1, EnvioId = envioId };
+
+    /// <summary>Carga envíos ya asignados al viaje: ocupan lugar, peso y 0,5 km de desvío en su fecha.</summary>
+    private static void AgregarAsignados(RuteaYaDbContext context, params Envio[] envios)
+    {
+        foreach (var envio in envios)
+        {
+            envio.Estado = EstadoEnvio.ConductorAsignado;
+            context.Envios.Add(envio);
+            context.Asignaciones.Add(new Asignacion
+            {
+                ViajeId = 1,
+                EnvioId = envio.Id,
+                FechaAsignacion = DateTime.UtcNow,
+                DesvioKm = 0.5m,
+                Ganancia = envio.MontoOfrecido
+            });
+        }
+    }
+
     [Fact]
     public async Task AceptarOportunidadAsync_DatosValidos_AsignaCorrectamente()
     {
-        
         using var context = CrearDbContextEnMemoria();
-        var conductorId = 10;
-        var remitenteId = 20;
-
-        var viaje = new Viaje
-        {
-            Id = 1,
-            UsuarioId = conductorId,
-            Origen = "Moron",
-            Destino = "Castelar",
-            MaxPaquetes = 3,
-            PesoMaximoKg = 15m,
-            DesvioMaximoKm = 5m,
-            Estado = EstadoViaje.Activo
-        };
-
-        var envio = new Envio
-        {
-            Id = 100,
-            UsuarioId = remitenteId,
-            Origen = "Moron",
-            Destino = "Haedo",
-            PesoKg = 4m,
-            MontoOfrecido = 2500m,
-            Estado = EstadoEnvio.BuscandoConductor
-        };
-
-        context.Viajes.Add(viaje);
-        context.Envios.Add(envio);
+        context.Viajes.Add(CrearViajeDeLosMartes());
+        context.Envios.Add(CrearEnvioParaAceptar(100, Martes17, destino: "A", pesoKg: 4m, monto: 2500m));
         await context.SaveChangesAsync();
 
-        _routingServiceMock
-            .Setup(r => r.CalcularDesvioAsync(viaje.Origen, It.IsAny<List<string>>(), viaje.Destino, envio.Origen, envio.Destino))
-            .ReturnsAsync(new CalculoDesvioDto
-            {
-                DistanciaHabitualKm = 2.5,
-                DistanciaConEnvioKm = 4.5,
-                DuracionHabitual = TimeSpan.FromMinutes(10),
-                DuracionConEnvio = TimeSpan.FromMinutes(13)
-            });
+        var resultado = await CrearServicioDeAceptacion(context).AceptarOportunidadAsync(ConductorId, Aceptar(100));
 
-        var service = new AsignacionService(context, _estadoEnvioServiceMock.Object, _routingServiceMock.Object);
-        var request = new AsignarOportunidadRequestDto { ViajeId = viaje.Id, EnvioId = envio.Id };
-
-        
-        var resultado = await service.AceptarOportunidadAsync(conductorId, request);
-
-        // Assert
-        Assert.NotNull(resultado);
-        Assert.Equal(viaje.Id, resultado.ViajeId);
-        Assert.Equal(envio.Id, resultado.EnvioId);
+        Assert.Equal(1, resultado.ViajeId);
+        Assert.Equal(100, resultado.EnvioId);
         Assert.Equal(2.0m, resultado.DesvioKm);
         Assert.Equal(2500m, resultado.Ganancia);
-
-        var envioActualizado = await context.Envios.FindAsync(envio.Id);
-        Assert.Equal(EstadoEnvio.ConductorAsignado, envioActualizado!.Estado);
-
-        var asignacionPersistida = await context.Asignaciones.FirstOrDefaultAsync(a => a.EnvioId == envio.Id);
-        Assert.NotNull(asignacionPersistida);
+        Assert.Equal(EstadoEnvio.ConductorAsignado, (await context.Envios.FindAsync(100))!.Estado);
+        Assert.NotNull(await context.Asignaciones.SingleOrDefaultAsync(a => a.EnvioId == 100));
     }
 
     [Fact]
-    public async Task AceptarOportunidadAsync_ViajeAjeno_LanzaUnauthorizedAccessException()
+    public async Task AceptarOportunidadAsync_ViajeRecurrenteLlenoUnMartes_PermiteAceptarParaElMartesSiguiente()
     {
-        
         using var context = CrearDbContextEnMemoria();
-        var propietarioViajeId = 10;
-        var usuarioIntrusoId = 99;
-
-        var viaje = new Viaje
-        {
-            Id = 1,
-            UsuarioId = propietarioViajeId,
-            Origen = "Moron",
-            Destino = "Castelar",
-            Estado = EstadoViaje.Activo
-        };
-
-        var envio = new Envio
-        {
-            Id = 100,
-            UsuarioId = 20,
-            Origen = "Moron",
-            Destino = "Castelar",
-            Estado = EstadoEnvio.BuscandoConductor
-        };
-
-        context.Viajes.Add(viaje);
-        context.Envios.Add(envio);
+        context.Viajes.Add(CrearViajeDeLosMartes(maxPaquetes: 2, pesoMaximoKg: 10m));
+        // El martes 17 ya está completo: 2 de 2 paquetes y 10 de 10 kg.
+        AgregarAsignados(context,
+            CrearEnvioParaAceptar(200, Martes17, destino: "Medio", pesoKg: 5m),
+            CrearEnvioParaAceptar(201, Martes17, destino: "Medio", pesoKg: 5m));
+        context.Envios.Add(CrearEnvioParaAceptar(100, Martes24, pesoKg: 5m));
         await context.SaveChangesAsync();
 
-        var service = new AsignacionService(context, _estadoEnvioServiceMock.Object, _routingServiceMock.Object);
+        var resultado = await CrearServicioDeAceptacion(context).AceptarOportunidadAsync(ConductorId, Aceptar(100));
 
-        
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            service.AceptarOportunidadAsync(usuarioIntrusoId, new AsignarOportunidadRequestDto { ViajeId = 1, EnvioId = 100 }));
+        // La capacidad es por fecha: el martes 24 el viaje sale vacío.
+        Assert.Equal(100, resultado.EnvioId);
+        Assert.Equal(3, await context.Asignaciones.CountAsync());
     }
 
     [Fact]
-    public async Task AceptarOportunidadAsync_MismoUsuarioRemitenteYConductor_LanzaInvalidOperationException()
+    public async Task AceptarOportunidadAsync_CupoDelMismoDiaCompleto_LanzaConflicto()
     {
-        
         using var context = CrearDbContextEnMemoria();
-        var usuarioId = 10;
-
-        var viaje = new Viaje
-        {
-            Id = 1,
-            UsuarioId = usuarioId,
-            Origen = "Moron",
-            Destino = "Castelar",
-            Estado = EstadoViaje.Activo
-        };
-
-        var envioPropio = new Envio
-        {
-            Id = 100,
-            UsuarioId = usuarioId, // Mismo usuario
-            Origen = "Moron",
-            Destino = "Castelar",
-            Estado = EstadoEnvio.BuscandoConductor
-        };
-
-        context.Viajes.Add(viaje);
-        context.Envios.Add(envioPropio);
+        context.Viajes.Add(CrearViajeDeLosMartes(maxPaquetes: 2));
+        AgregarAsignados(context,
+            CrearEnvioParaAceptar(200, Martes17, destino: "Medio", pesoKg: 1m),
+            CrearEnvioParaAceptar(201, Martes17, destino: "Medio", pesoKg: 1m));
+        context.Envios.Add(CrearEnvioParaAceptar(100, Martes17, pesoKg: 1m));
         await context.SaveChangesAsync();
 
-        var service = new AsignacionService(context, _estadoEnvioServiceMock.Object, _routingServiceMock.Object);
+        var ex = await Assert.ThrowsAsync<ConflictException>(() =>
+            CrearServicioDeAceptacion(context).AceptarOportunidadAsync(ConductorId, Aceptar(100)));
 
-        
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.AceptarOportunidadAsync(usuarioId, new AsignarOportunidadRequestDto { ViajeId = 1, EnvioId = 100 }));
-
-        Assert.Contains("publicado por vos mismo", ex.Message);
+        Assert.Contains("cantidad máxima de paquetes", ex.Message);
+        Assert.Equal(EstadoEnvio.BuscandoConductor, (await context.Envios.FindAsync(100))!.Estado);
+        Assert.Equal(2, await context.Asignaciones.CountAsync());
     }
 
     [Fact]
-    public async Task AceptarOportunidadAsync_EnvioNoDisponible_LanzaInvalidOperationException()
+    public async Task AceptarOportunidadAsync_PesoDelMismoDiaSuperado_LanzaConflicto()
     {
-        
         using var context = CrearDbContextEnMemoria();
-        var conductorId = 10;
-
-        var viaje = new Viaje
-        {
-            Id = 1,
-            UsuarioId = conductorId,
-            Origen = "Moron",
-            Destino = "Castelar",
-            Estado = EstadoViaje.Activo
-        };
-
-        var envioTomado = new Envio
-        {
-            Id = 100,
-            UsuarioId = 20,
-            Origen = "Moron",
-            Destino = "Castelar",
-            Estado = EstadoEnvio.ConductorAsignado // Ya asignado
-        };
-
-        context.Viajes.Add(viaje);
-        context.Envios.Add(envioTomado);
+        context.Viajes.Add(CrearViajeDeLosMartes(pesoMaximoKg: 10m));
+        AgregarAsignados(context, CrearEnvioParaAceptar(200, Martes17, destino: "Medio", pesoKg: 8m));
+        context.Envios.Add(CrearEnvioParaAceptar(100, Martes17, pesoKg: 3m)); // 8 + 3 = 11 kg
         await context.SaveChangesAsync();
 
-        var service = new AsignacionService(context, _estadoEnvioServiceMock.Object, _routingServiceMock.Object);
+        var ex = await Assert.ThrowsAsync<ConflictException>(() =>
+            CrearServicioDeAceptacion(context).AceptarOportunidadAsync(ConductorId, Aceptar(100)));
 
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.AceptarOportunidadAsync(conductorId, new AsignarOportunidadRequestDto { ViajeId = 1, EnvioId = 100 }));
-
-        Assert.Contains("no está disponible", ex.Message);
+        Assert.Contains("peso disponible", ex.Message);
     }
 
     [Fact]
-    public async Task AceptarOportunidadAsync_DesvioSuperaMaximoTolerado_LanzaInvalidOperationException()
+    public async Task AceptarOportunidadAsync_DesvioAcumuladoDelDiaSuperado_LanzaConflicto()
     {
-        
         using var context = CrearDbContextEnMemoria();
-        var conductorId = 10;
-
-        var viaje = new Viaje
-        {
-            Id = 1,
-            UsuarioId = conductorId,
-            Origen = "Moron",
-            Destino = "Castelar",
-            MaxPaquetes = 5,
-            PesoMaximoKg = 50m,
-            DesvioMaximoKm = 3m, // Máximo 3 km
-            Estado = EstadoViaje.Activo
-        };
-
-        var envio = new Envio
-        {
-            Id = 100,
-            UsuarioId = 20,
-            Origen = "Moron",
-            Destino = "Lujan",
-            PesoKg = 2m,
-            MontoOfrecido = 1000m,
-            Estado = EstadoEnvio.BuscandoConductor
-        };
-
-        context.Viajes.Add(viaje);
-        context.Envios.Add(envio);
+        context.Viajes.Add(CrearViajeDeLosMartes(desvioMaximoKm: 3m));
+        // Ya hay un envío ese día con 0,5 km de desvío: quedan 2,5 km y el nuevo agrega 3 km.
+        // Solo, entraría en los 3 km del viaje; sumado a lo del día, no.
+        AgregarAsignados(context, CrearEnvioParaAceptar(200, Martes17, destino: "Medio", pesoKg: 1m));
+        context.Envios.Add(CrearEnvioParaAceptar(100, Martes17, destino: "Cerca", pesoKg: 1m));
         await context.SaveChangesAsync();
 
-        _routingServiceMock
-            .Setup(r => r.CalcularDesvioAsync(viaje.Origen, It.IsAny<List<string>>(), viaje.Destino, envio.Origen, envio.Destino))
-            .ReturnsAsync(new CalculoDesvioDto
-            {
-                DistanciaHabitualKm = 2.5,
-                DistanciaConEnvioKm = 10.0,
-            });
+        var ex = await Assert.ThrowsAsync<ConflictException>(() =>
+            CrearServicioDeAceptacion(context).AceptarOportunidadAsync(ConductorId, Aceptar(100)));
 
-        var service = new AsignacionService(context, _estadoEnvioServiceMock.Object, _routingServiceMock.Object);
+        Assert.Contains("desvío disponible", ex.Message);
+    }
 
-        
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.AceptarOportunidadAsync(conductorId, new AsignarOportunidadRequestDto { ViajeId = 1, EnvioId = 100 }));
+    [Fact]
+    public async Task AceptarOportunidadAsync_DesvioSuperaMaximoTolerado_LanzaConflicto()
+    {
+        using var context = CrearDbContextEnMemoria();
+        context.Viajes.Add(CrearViajeDeLosMartes(desvioMaximoKm: 3m));
+        context.Envios.Add(CrearEnvioParaAceptar(100, Martes17, destino: "MuyLejos")); // 6 km
+        await context.SaveChangesAsync();
 
-        Assert.Contains("supera el máximo tolerado", ex.Message);
+        var ex = await Assert.ThrowsAsync<ConflictException>(() =>
+            CrearServicioDeAceptacion(context).AceptarOportunidadAsync(ConductorId, Aceptar(100)));
+
+        Assert.Contains("desvío disponible", ex.Message);
+    }
+
+    [Fact]
+    public async Task AceptarOportunidadAsync_ElViajeNoSaleEseDia_LanzaConflicto()
+    {
+        using var context = CrearDbContextEnMemoria();
+        context.Viajes.Add(CrearViajeDeLosMartes());
+        context.Envios.Add(CrearEnvioParaAceptar(100, Miercoles18));
+        await context.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(() =>
+            CrearServicioDeAceptacion(context).AceptarOportunidadAsync(ConductorId, Aceptar(100)));
+
+        Assert.Contains("no sale", ex.Message);
+    }
+
+    [Fact]
+    public async Task AceptarOportunidadAsync_ViajeAjeno_LanzaAccesoDenegado()
+    {
+        using var context = CrearDbContextEnMemoria();
+        context.Viajes.Add(CrearViajeDeLosMartes());
+        context.Envios.Add(CrearEnvioParaAceptar(100, Martes17));
+        await context.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<AccesoDenegadoException>(() =>
+            CrearServicioDeAceptacion(context).AceptarOportunidadAsync(usuarioId: 99, Aceptar(100)));
+    }
+
+    [Fact]
+    public async Task AceptarOportunidadAsync_EnvioInexistente_LanzaNotFound()
+    {
+        using var context = CrearDbContextEnMemoria();
+        context.Viajes.Add(CrearViajeDeLosMartes());
+        await context.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            CrearServicioDeAceptacion(context).AceptarOportunidadAsync(ConductorId, Aceptar(999)));
+    }
+
+    [Fact]
+    public async Task AceptarOportunidadAsync_MismoUsuarioRemitenteYConductor_LanzaConflicto()
+    {
+        using var context = CrearDbContextEnMemoria();
+        context.Viajes.Add(CrearViajeDeLosMartes());
+        context.Envios.Add(CrearEnvioParaAceptar(100, Martes17, usuarioId: ConductorId));
+        await context.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(() =>
+            CrearServicioDeAceptacion(context).AceptarOportunidadAsync(ConductorId, Aceptar(100)));
+
+        Assert.Contains("publicado por vos", ex.Message);
+    }
+
+    [Fact]
+    public async Task AceptarOportunidadAsync_EnvioNoDisponible_LanzaConflicto()
+    {
+        using var context = CrearDbContextEnMemoria();
+        context.Viajes.Add(CrearViajeDeLosMartes());
+        context.Envios.Add(CrearEnvioParaAceptar(100, Martes17, estado: EstadoEnvio.ConductorAsignado));
+        await context.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(() =>
+            CrearServicioDeAceptacion(context).AceptarOportunidadAsync(ConductorId, Aceptar(100)));
+
+        Assert.Contains("ya no está disponible", ex.Message);
+    }
+
+    [Fact]
+    public async Task AceptarOportunidadAsync_ViajeInactivo_LanzaConflicto()
+    {
+        using var context = CrearDbContextEnMemoria();
+        var viaje = CrearViajeDeLosMartes();
+        viaje.Estado = EstadoViaje.Inactivo;
+        context.Viajes.Add(viaje);
+        context.Envios.Add(CrearEnvioParaAceptar(100, Martes17));
+        await context.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(() =>
+            CrearServicioDeAceptacion(context).AceptarOportunidadAsync(ConductorId, Aceptar(100)));
+
+        Assert.Contains("inactivo", ex.Message);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -275,8 +293,12 @@ public class AsignacionServiceTests
     private const int ConductorId = 10;
     private const int RemitenteId = 20;
 
-    private AsignacionService CrearServicioDeCombinaciones(RuteaYaDbContext context) =>
-        new(context, _estadoEnvioServiceMock.Object, new RutasFalsas(), new RelojFijo(HoyCombinacion));
+    private AsignacionService CrearServicioDeCombinaciones(RuteaYaDbContext context)
+    {
+        var reloj = new RelojFijo(HoyCombinacion);
+        var rutas = new RutasFalsas();
+        return new(context, _estadoEnvioServiceMock.Object, rutas, new OportunidadService(context, rutas, reloj), reloj);
+    }
 
     /// <summary>Viaje activo que sale todos los días, con los límites indicados.</summary>
     private static Viaje CrearViajeConLimites(int maxPaquetes = 3, decimal pesoMaximoKg = 20m, decimal desvioMaximoKm = 10m) => new()

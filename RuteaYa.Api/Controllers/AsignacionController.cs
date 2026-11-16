@@ -18,36 +18,34 @@ public class AsignacionController : ControllerBase
         _asignacionService = asignacionService;
     }
 
+    /// <summary>
+    /// Acepta una oportunidad: asigna un envío a un viaje del usuario (HU-16).
+    /// </summary>
+    /// <remarks>
+    /// Usa las mismas reglas que GET api/viajes/{viajeId}/oportunidades/{envioId}: el viaje tiene que salir
+    /// el día del envío y le tienen que quedar lugar, peso y desvío <b>en esa fecha</b>.
+    /// Los errores los convierte ManejadorGlobalDeExcepciones.
+    /// </remarks>
+    /// <response code="201">Envío asignado al viaje.</response>
+    /// <response code="401">Sin token o token inválido.</response>
+    /// <response code="403">El viaje pertenece a otro usuario.</response>
+    /// <response code="404">El viaje o el envío no existen.</response>
+    /// <response code="409">El envío ya no es compatible (motivos en el detalle) o lo tomó otro conductor.</response>
     [HttpPost]
     [ProducesResponseType(typeof(AsignacionDetalleDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> AceptarOportunidad([FromBody] AsignarOportunidadRequestDto dto)
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<AsignacionDetalleDto>> AceptarOportunidad(
+        [FromBody] AsignarOportunidadRequestDto dto,
+        CancellationToken cancellationToken)
     {
-        var usuarioIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(usuarioIdClaim) || !int.TryParse(usuarioIdClaim, out var usuarioId))
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId))
             return Unauthorized();
 
-        try
-        {
-            var resultado = await _asignacionService.AceptarOportunidadAsync(usuarioId, dto);
-            return StatusCode(StatusCodes.Status201Created, resultado);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { mensaje = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { mensaje = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            // Conflicto de negocio o concurrencia
-            return Conflict(new { mensaje = ex.Message });
-        }
+        var resultado = await _asignacionService.AceptarOportunidadAsync(usuarioId, dto, cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, resultado);
     }
 
     

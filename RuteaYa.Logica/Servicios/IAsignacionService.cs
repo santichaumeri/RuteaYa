@@ -7,7 +7,14 @@ namespace RuteaYa.Logica.Servicios;
 
 public interface IAsignacionService
 {
-    Task<AsignacionDetalleDto> AceptarOportunidadAsync(int usuarioId, AsignarOportunidadRequestDto dto);
+    /// <summary>
+    /// Acepta un envío individual para un viaje (HU-16). Valida con las reglas de compatibilidad por fecha
+    /// (HU-11/12). Lanza NotFoundException (404), AccesoDenegadoException (403) o ConflictException (409).
+    /// </summary>
+    Task<AsignacionDetalleDto> AceptarOportunidadAsync(
+        int usuarioId,
+        AsignarOportunidadRequestDto dto,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Reserva de una vez todos los envíos de una combinación (HU-17). Es atómico: se asignan todos o ninguno.
