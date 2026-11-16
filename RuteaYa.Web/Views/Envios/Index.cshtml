@@ -110,32 +110,19 @@
                                 </td>
                                 <td class="fw-bold text-success">$@envio.MontoOfrecido.ToString("N2")</td>
                                 <td>
-                                    @switch (envio.Estado)
+                                    <partial name="_EstadoEnvio" model="envio.Estado" />
+                                    @if (envio.ViajeAsociado != null)
                                     {
-                                        case EstadoEnvio.BuscandoConductor:
-                                            <span class="badge bg-warning text-dark">Buscando conductor</span>
-                                            break;
-                                        case EstadoEnvio.ConductorAsignado:
-                                            <span class="badge bg-info text-dark">Conductor asignado</span>
-                                            break;
-                                        case EstadoEnvio.Retirado:
-                                            <span class="badge bg-secondary">Retirado</span>
-                                            break;
-                                        case EstadoEnvio.EnCamino:
-                                            <span class="badge bg-primary">En camino</span>
-                                            break;
-                                        case EstadoEnvio.Entregado:
-                                            <span class="badge bg-success">Entregado</span>
-                                            break;
-                                        case EstadoEnvio.Cancelado:
-                                            <span class="badge bg-danger">Cancelado</span>
-                                            break;
-                                        default:
-                                            <span class="badge bg-secondary">@envio.Estado</span>
-                                            break;
+                                        <div class="text-muted small mt-1">Lo lleva @envio.ViajeAsociado.Conductor</div>
                                     }
                                 </td>
                                 <td class="text-end">
+                                    <div class="d-inline-flex flex-wrap justify-content-end gap-1">
+                                    <a asp-action="Detalle" asp-route-id="@envio.Id" class="btn btn-outline-primary btn-sm">Ver detalle</a>
+                                    @if (envio.ViajeAsociado != null)
+                                    {
+                                        <a asp-action="Detalle" asp-route-id="@envio.Id" asp-fragment="viaje-asociado" class="btn btn-outline-secondary btn-sm">Ver viaje</a>
+                                    }
                                     @if (envio.Estado == EstadoEnvio.BuscandoConductor)
                                     {
                                         <form asp-action="Cancelar" asp-route-id="@envio.Id" method="post" class="d-inline"
@@ -146,6 +133,7 @@
                                             </button>
                                         </form>
                                     }
+                                    </div>
                                 </td>
                             </tr>
                         }

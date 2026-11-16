@@ -55,6 +55,19 @@ public class EnviosController : Controller
         return RedirectToAction("Index", "Envios");
     }
 
+    /// <summary>Detalle del envío y, si ya tiene conductor, el viaje que lo lleva (pantalla 7).</summary>
+    [HttpGet]
+    public async Task<IActionResult> Detalle(int id)
+    {
+        var envio = await _enviosApiClient.ObtenerPorIdAsync(id);
+        if (envio == null)
+        {
+            return NotFound();
+        }
+
+        return View(envio);
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Cancelar(int id)

@@ -135,7 +135,7 @@
                         <div class="dashboard-list">
                             @foreach (var envio in Model.Envios)
                             {
-                                <a class="dashboard-list-item" asp-controller="Envios" asp-action="Details" asp-route-id="@envio.Id">
+                                <a class="dashboard-list-item" asp-controller="Envios" asp-action="Detalle" asp-route-id="@envio.Id">
                                     <span>
                                         <strong>@envio.Ruta</strong>
                                         <small>@envio.Descripcion · @envio.MontoOfrecido.ToString("C0", cultura)</small>

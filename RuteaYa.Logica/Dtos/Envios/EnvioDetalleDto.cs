@@ -17,4 +17,7 @@ public class EnvioDetalleDto
     public string Descripcion { get; set; } = string.Empty;
     public decimal MontoOfrecido { get; set; }
     public EstadoEnvio Estado { get; set; }
+
+    /// <summary>Null mientras el envío no tiene conductor asignado.</summary>
+    public ViajeAsociadoDto? ViajeAsociado { get; set; }
 }
