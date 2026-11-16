@@ -81,54 +81,61 @@ namespace RuteaYa.Logica.Servicios
 
         public async Task<IEnumerable<EnvioDetalleDto>> ObtenerMisEnviosAsync(int UsuarioId, EstadoEnvio? estado = null)
         {
-            var query = _context.Envios.AsNoTracking().Where(e=> e.UsuarioId == UsuarioId);
+            var query = ConViajeAsociado(_context.Envios.AsNoTracking().Where(e=> e.UsuarioId == UsuarioId));
 
             if(estado.HasValue)
             {
                 query = query.Where(e => e.Estado == estado.Value);
             }
 
-            return await query
+            var envios = await query
                 .OrderByDescending(e => e.Fecha)
-                .Select(e => new EnvioDetalleDto
-                {
-                    Id = e.Id,
-                    Origen = e.Origen,
-                    Destino = e.Destino,
-                    Fecha = e.Fecha,
-                    PesoKg = e.PesoKg,
-                    Tamano = e.Tamano,
-                    Descripcion = e.Descripcion,
-                    MontoOfrecido = e.MontoOfrecido,
-                    Estado = e.Estado,
-                }).ToListAsync();   
+                .ToListAsync();
+
+            return envios.Select(ADetalle).ToList();
         }
 
         public async Task<EnvioDetalleDto?> ObtenerPorIdAsync(int id, int usuarioId)
         {
-            var envio = await _context.Envios
-                .AsNoTracking()
+            var envio = await ConViajeAsociado(_context.Envios.AsNoTracking())
                 .FirstOrDefaultAsync(e => e.Id == id && e.UsuarioId == usuarioId);
 
-            if(envio == null)
-            {
-                return null;
-            }
-
-            return new EnvioDetalleDto
-            {
-                Id = envio.Id,
-                Origen = envio.Origen,
-                Destino = envio.Destino,
-                Fecha = envio.Fecha,
-                PesoKg = envio.PesoKg,
-                Tamano = envio.Tamano,
-                Descripcion = envio.Descripcion,
-                MontoOfrecido = envio.MontoOfrecido,
-                Estado = envio.Estado
-            };
-
+            return envio == null ? null : ADetalle(envio);
         }
+
+        /// <summary>Trae el viaje que lleva el envío (si ya tiene conductor), con su conductor y sus paradas.</summary>
+        private static IQueryable<Envio> ConViajeAsociado(IQueryable<Envio> query) => query
+            .Include(e => e.Asignacion!).ThenInclude(a => a.Viaje).ThenInclude(v => v.Usuario)
+            .Include(e => e.Asignacion!).ThenInclude(a => a.Viaje).ThenInclude(v => v.Paradas);
+
+        private static EnvioDetalleDto ADetalle(Envio envio) => new()
+        {
+            Id = envio.Id,
+            Origen = envio.Origen,
+            Destino = envio.Destino,
+            Fecha = envio.Fecha,
+            PesoKg = envio.PesoKg,
+            Tamano = envio.Tamano,
+            Descripcion = envio.Descripcion,
+            MontoOfrecido = envio.MontoOfrecido,
+            Estado = envio.Estado,
+            ViajeAsociado = envio.Asignacion is null ? null : AViajeAsociado(envio.Asignacion)
+        };
+
+        private static ViajeAsociadoDto AViajeAsociado(Asignacion asignacion) => new()
+        {
+            ViajeId = asignacion.ViajeId,
+            Conductor = $"{asignacion.Viaje.Usuario.Nombre} {asignacion.Viaje.Usuario.Apellido}".Trim(),
+            Origen = asignacion.Viaje.Origen,
+            Destino = asignacion.Viaje.Destino,
+            HoraSalida = asignacion.Viaje.HoraSalida.ToTimeSpan(),
+            HoraLlegada = asignacion.Viaje.HoraLlegada.ToTimeSpan(),
+            Paradas = asignacion.Viaje.Paradas
+                .OrderBy(p => p.Orden)
+                .Select(p => p.Direccion)
+                .ToList(),
+            FechaAsignacion = asignacion.FechaAsignacion
+        };
 
         public async Task CancelarEnvioAsync(int id, int usuarioId)
         {

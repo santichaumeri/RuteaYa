@@ -351,4 +351,90 @@ public class EnvioServiceTest
 
         await Assert.ThrowsAsync<NotFoundException>(() => envioService.CancelarEnvioAsync(999, usuarioId: 1));
     }
+
+    [Fact]
+    public async Task ObtenerPorIdAsync_ConConductorAsignado_IncluyeElViajeAsociado()
+    {
+        using var context = CrearContextoEnMemoria();
+        AgregarEnvioAsignado(context);
+        await context.SaveChangesAsync();
+        var envioService = new EnvioService(context, new EstadoEnvioService());
+
+        var envio = await envioService.ObtenerPorIdAsync(10, usuarioId: 1);
+
+        Assert.NotNull(envio);
+        var viaje = Assert.IsType<ViajeAsociadoDto>(envio.ViajeAsociado);
+        Assert.Equal(5, viaje.ViajeId);
+        Assert.Equal("Carla Gómez", viaje.Conductor);
+        Assert.Equal("Moron", viaje.Origen);
+        Assert.Equal("CABA", viaje.Destino);
+        Assert.Equal(new TimeSpan(8, 0, 0), viaje.HoraSalida);
+        Assert.Equal(new TimeSpan(9, 0, 0), viaje.HoraLlegada);
+        // Se guardaron desordenadas: se devuelven por Orden.
+        Assert.Equal(["Haedo", "Ramos Mejia"], viaje.Paradas);
+        Assert.Equal(new DateTime(2026, 11, 10, 15, 30, 0), viaje.FechaAsignacion);
+    }
+
+    [Fact]
+    public async Task ObtenerPorIdAsync_SinConductorAsignado_NoTieneViajeAsociado()
+    {
+        using var context = CrearContextoEnMemoria();
+        context.Usuarios.Add(new Usuario { Id = 1, Nombre = "Ana", Apellido = "López", Email = "ana@example.com" });
+        context.Envios.Add(new Envio { Id = 11, UsuarioId = 1, Origen = "Haedo", Destino = "CABA", Descripcion = "Caja", Estado = EstadoEnvio.BuscandoConductor });
+        await context.SaveChangesAsync();
+        var envioService = new EnvioService(context, new EstadoEnvioService());
+
+        var envio = await envioService.ObtenerPorIdAsync(11, usuarioId: 1);
+
+        Assert.NotNull(envio);
+        Assert.Null(envio.ViajeAsociado);
+    }
+
+    [Fact]
+    public async Task ObtenerMisEnviosAsync_MuestraElViajeSoloEnLosEnviosAsignados()
+    {
+        using var context = CrearContextoEnMemoria();
+        AgregarEnvioAsignado(context);
+        context.Envios.Add(new Envio { Id = 11, UsuarioId = 1, Origen = "Haedo", Destino = "CABA", Descripcion = "Sobre", Estado = EstadoEnvio.BuscandoConductor });
+        await context.SaveChangesAsync();
+        var envioService = new EnvioService(context, new EstadoEnvioService());
+
+        var envios = (await envioService.ObtenerMisEnviosAsync(1)).ToList();
+
+        Assert.Equal(2, envios.Count);
+        Assert.Equal(5, envios.Single(e => e.Id == 10).ViajeAsociado?.ViajeId);
+        Assert.Null(envios.Single(e => e.Id == 11).ViajeAsociado);
+    }
+
+    /// <summary>Envío 10 de Ana (usuario 1) asignado al viaje 5 de Carla (usuario 2).</summary>
+    private static void AgregarEnvioAsignado(RuteaYaDbContext context)
+    {
+        context.Usuarios.AddRange(
+            new Usuario { Id = 1, Nombre = "Ana", Apellido = "López", Email = "ana@example.com" },
+            new Usuario { Id = 2, Nombre = "Carla", Apellido = "Gómez", Email = "carla@example.com" });
+        context.Viajes.Add(new Viaje
+        {
+            Id = 5,
+            UsuarioId = 2,
+            Origen = "Moron",
+            Destino = "CABA",
+            DiasSemana = DiasSemana.Lunes,
+            HoraSalida = new TimeOnly(8, 0),
+            HoraLlegada = new TimeOnly(9, 0),
+            Estado = EstadoViaje.Activo,
+            Paradas =
+            [
+                new Parada { Direccion = "Ramos Mejia", Orden = 2 },
+                new Parada { Direccion = "Haedo", Orden = 1 }
+            ]
+        });
+        context.Envios.Add(new Envio { Id = 10, UsuarioId = 1, Origen = "Haedo", Destino = "CABA", Descripcion = "Caja", Estado = EstadoEnvio.ConductorAsignado });
+        context.Asignaciones.Add(new Asignacion
+        {
+            ViajeId = 5,
+            EnvioId = 10,
+            FechaAsignacion = new DateTime(2026, 11, 10, 15, 30, 0),
+            Ganancia = 1000m
+        });
+    }
 }

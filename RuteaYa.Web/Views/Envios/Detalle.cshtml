@@ -1,0 +1,83 @@
+﻿@using RuteaYa.Entidades.Enums
+@model RuteaYa.Logica.Dtos.Envios.EnvioDetalleDto
+
+@{
+    ViewData["Title"] = "Detalle del envío";
+    var viaje = Model.ViajeAsociado;
+}
+
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+            <h2 class="fw-bold mb-0">Detalle del envío</h2>
+            <p class="text-muted mb-0">@Model.Origen hacia @Model.Destino</p>
+        </div>
+        <div class="d-flex gap-2">
+            @if (Model.Estado == EstadoEnvio.BuscandoConductor)
+            {
+                <form asp-action="Cancelar" asp-route-id="@Model.Id" method="post"
+                      onsubmit="return confirm('¿Seguro que deseas cancelar este envío?');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-danger">Cancelar envío</button>
+                </form>
+            }
+            <a asp-action="Index" class="btn btn-outline-secondary">Volver</a>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <h3 class="h5 mb-3">Paquete</h3>
+            <dl class="row mb-0">
+                <dt class="col-sm-4">Estado</dt>
+                <dd class="col-sm-8"><partial name="_EstadoEnvio" model="Model.Estado" /></dd>
+                <dt class="col-sm-4">Fecha</dt>
+                <dd class="col-sm-8">@Model.Fecha.ToString("dd/MM/yyyy")</dd>
+                <dt class="col-sm-4">Origen</dt>
+                <dd class="col-sm-8">@Model.Origen</dd>
+                <dt class="col-sm-4">Destino</dt>
+                <dd class="col-sm-8">@Model.Destino</dd>
+                <dt class="col-sm-4">Descripción</dt>
+                <dd class="col-sm-8">@Model.Descripcion</dd>
+                <dt class="col-sm-4">Peso / tamaño</dt>
+                <dd class="col-sm-8">@Model.PesoKg.ToString("0.##") kg · @Model.Tamano</dd>
+                <dt class="col-sm-4">Monto ofrecido</dt>
+                <dd class="col-sm-8">$@Model.MontoOfrecido.ToString("N2")</dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm" id="viaje-asociado">
+        <div class="card-body p-4">
+            <h3 class="h5 mb-3">Viaje asociado</h3>
+            @if (viaje == null)
+            {
+                <p class="text-muted mb-0">
+                    @(Model.Estado == EstadoEnvio.Cancelado
+                        ? "El envío se canceló antes de que un conductor lo aceptara."
+                        : "Todavía ningún conductor aceptó este envío. Cuando lo acepten, vas a ver acá el viaje que lo lleva.")
+                </p>
+            }
+            else
+            {
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Conductor</dt>
+                    <dd class="col-sm-8">@viaje.Conductor</dd>
+                    <dt class="col-sm-4">Recorrido</dt>
+                    <dd class="col-sm-8">@viaje.Origen → @viaje.Destino</dd>
+                    <dt class="col-sm-4">Paradas intermedias</dt>
+                    <dd class="col-sm-8">
+                        @(viaje.Paradas.Count == 0 ? "Sin paradas" : string.Join(" → ", viaje.Paradas))
+                    </dd>
+                    <dt class="col-sm-4">Horario</dt>
+                    <dd class="col-sm-8">
+                        Sale @viaje.HoraSalida.ToString(@"hh\:mm") y llega @viaje.HoraLlegada.ToString(@"hh\:mm")
+                        el @Model.Fecha.ToString("dd/MM/yyyy")
+                    </dd>
+                    <dt class="col-sm-4">Aceptado el</dt>
+                    <dd class="col-sm-8">@viaje.FechaAsignacion.ToString("dd/MM/yyyy HH:mm")</dd>
+                </dl>
+            }
+        </div>
+    </div>
+</div>
