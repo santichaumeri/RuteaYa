@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace RuteaYa.Web.Models;
 
-public sealed class CrearViajeViewModel
+public sealed class CrearViajeViewModel : IValidatableObject
 {
     [Required(ErrorMessage = "El origen es obligatorio.")]
     [StringLength(300, ErrorMessage = "El origen no puede superar los 300 caracteres.")]
@@ -38,4 +38,7 @@ public sealed class CrearViajeViewModel
     public decimal DesvioMaximoKm { get; set; }
 
     public List<string> Paradas { get; set; } = [];
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
+        ValidacionHorarioViaje.Validar(HoraSalida, HoraLlegada);
 }

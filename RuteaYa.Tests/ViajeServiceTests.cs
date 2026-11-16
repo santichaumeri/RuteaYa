@@ -127,6 +127,54 @@ public sealed class ViajeServiceTests
             service.CrearViajeAsync(1, request, CancellationToken.None));
     }
 
+    [Theory]
+    [InlineData(9, 0, 8, 0)]   // llega antes de salir
+    [InlineData(8, 0, 8, 0)]   // llega a la misma hora en que sale
+    [InlineData(23, 0, 1, 0)]  // cruza la medianoche
+    public async Task CrearViaje_rechaza_llegada_que_no_es_posterior_a_la_salida(
+        int horaSalida, int minutoSalida, int horaLlegada, int minutoLlegada)
+    {
+        await using var dbContext = CrearDbContext();
+        var service = new ViajeService(dbContext);
+        var request = CrearRequestValida();
+        request.HoraSalida = new TimeSpan(horaSalida, minutoSalida, 0);
+        request.HoraLlegada = new TimeSpan(horaLlegada, minutoLlegada, 0);
+
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() =>
+            service.CrearViajeAsync(1, request, CancellationToken.None));
+
+        Assert.Equal("La hora de llegada tiene que ser posterior a la hora de salida.", ex.Message);
+        Assert.Empty(dbContext.Viajes);
+    }
+
+    [Fact]
+    public async Task EditarViaje_rechaza_llegada_anterior_a_la_salida()
+    {
+        await using var dbContext = CrearDbContext();
+        var service = new ViajeService(dbContext);
+        var creado = await service.CrearViajeAsync(7, CrearRequestValida(), CancellationToken.None);
+
+        var request = new EditarViajeRequest
+        {
+            Origen = "Belgrano",
+            Destino = "Lomas de Zamora",
+            DiasSemana = DiasSemana.Lunes,
+            HoraSalida = new TimeSpan(18, 0, 0),
+            HoraLlegada = new TimeSpan(17, 30, 0),
+            MaxPaquetes = 1,
+            PesoMaximoKg = 1,
+            DesvioMaximoKm = 1
+        };
+
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() =>
+            service.EditarViajeAsync(creado.Id, 7, request, CancellationToken.None));
+
+        Assert.Contains("posterior a la hora de salida", ex.Message);
+        var guardado = await dbContext.Viajes.SingleAsync();
+        Assert.Equal(new TimeOnly(8, 0), guardado.HoraSalida);
+        Assert.Equal(new TimeOnly(9, 0), guardado.HoraLlegada);
+    }
+
     [Fact]
     public async Task ObtenerDetalle_devuelve_datos_y_paradas_ordenadas()
     {
