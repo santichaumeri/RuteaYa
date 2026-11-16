@@ -231,6 +231,12 @@ public sealed class ViajeService(RuteaYaDbContext dbContext) : IViajeService
             throw new ValidacionException("La hora de llegada no es válida.");
         }
 
+        // El viaje se registra por día de salida, así que tiene que llegar el mismo día y después de salir.
+        if (horaLlegada <= horaSalida)
+        {
+            throw new ValidacionException("La hora de llegada tiene que ser posterior a la hora de salida.");
+        }
+
         if (maxPaquetes <= 0)
         {
             throw new ValidacionException("La cantidad máxima de paquetes debe ser mayor a cero.");

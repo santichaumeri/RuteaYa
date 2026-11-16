@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace RuteaYa.Web.Models;
 
-public sealed class EditarViajeViewModel
+public sealed class EditarViajeViewModel : IValidatableObject
 {
     public int Id { get; set; }
 
@@ -40,4 +40,7 @@ public sealed class EditarViajeViewModel
     public decimal DesvioMaximoKm { get; set; }
 
     public List<string> Paradas { get; set; } = [];
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
+        ValidacionHorarioViaje.Validar(HoraSalida, HoraLlegada);
 }
