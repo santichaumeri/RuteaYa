@@ -5,9 +5,6 @@ using RuteaYa.Logica.Data;
 using RuteaYa.Logica.Dtos.Envios;
 using RuteaYa.Logica.Excepciones;
 using RuteaYa.Logica.Servicios;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using Xunit;
 
 namespace RuteaYa.Tests;
@@ -149,7 +146,7 @@ public class EnvioServiceTest
     }
 
     [Fact]
-    public async Task CancelarEnvioAsync_EnvioDeOtroUsuario_DebeLanzarKeyNotFoundException()
+    public async Task CancelarEnvioAsync_EnvioDeOtroUsuario_DebeLanzarNotFoundException()
         {
             using var context = CrearContextoEnMemoria();
             var estadoService = new EstadoEnvioService();
@@ -168,7 +165,7 @@ public class EnvioServiceTest
             });
             await context.SaveChangesAsync();
 
-        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+        await Assert.ThrowsAsync<NotFoundException>(() =>
             envioService.CancelarEnvioAsync(20, usuarioActualId));
     }
 
@@ -213,7 +210,7 @@ public class EnvioServiceTest
     [InlineData("Morón", "Morón")]
     [InlineData("Ituzaingó", "ituzaingó")]
     [InlineData("  Haedo ", "haedo")]
-    public async Task CrearEnvioAsync_OrigenYDestinoIguales_DebeLanzarArgumentException(string origen, string destino)
+    public async Task CrearEnvioAsync_OrigenYDestinoIguales_DebeLanzarValidacionException(string origen, string destino)
     {
         
         using var context = CrearContextoEnMemoria();
@@ -232,14 +229,14 @@ public class EnvioServiceTest
         };
 
         
-        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() =>
             envioService.CrearEnvioAsync(dto, usuarioId: 1)
         );
         Assert.Equal("El origen y el destino no pueden ser iguales.", ex.Message);
     }
 
     [Fact]
-    public async Task CrearEnvioAsync_FechaAnteriorAHoy_DebeLanzarArgumentException()
+    public async Task CrearEnvioAsync_FechaAnteriorAHoy_DebeLanzarValidacionException()
     {
         
         using var context = CrearContextoEnMemoria();
@@ -258,7 +255,7 @@ public class EnvioServiceTest
         };
 
         
-        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() =>
             envioService.CrearEnvioAsync(dto, usuarioId: 1)
         );
         Assert.Equal("La fecha no puede ser anterior a la actual.", ex.Message);
@@ -267,7 +264,7 @@ public class EnvioServiceTest
     [Theory]
     [InlineData(0)]
     [InlineData(-2.5)]
-    public async Task CrearEnvioAsync_PesoInvalido_DebeLanzarArgumentException(decimal pesoInvalido)
+    public async Task CrearEnvioAsync_PesoInvalido_DebeLanzarValidacionException(decimal pesoInvalido)
     {
         // Arrange
         using var context = CrearContextoEnMemoria();
@@ -286,7 +283,7 @@ public class EnvioServiceTest
         };
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() =>
             envioService.CrearEnvioAsync(dto, usuarioId: 1)
         );
         Assert.Equal("El peso debe ser mayor a 0.", ex.Message);
@@ -295,7 +292,7 @@ public class EnvioServiceTest
     [Theory]
     [InlineData(0)]
     [InlineData(-500)]
-    public async Task CrearEnvioAsync_MontoOfrecidoInvalido_DebeLanzarArgumentException(decimal montoInvalido)
+    public async Task CrearEnvioAsync_MontoOfrecidoInvalido_DebeLanzarValidacionException(decimal montoInvalido)
     {
         // Arrange
         using var context = CrearContextoEnMemoria();
@@ -314,9 +311,44 @@ public class EnvioServiceTest
         };
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() =>
             envioService.CrearEnvioAsync(dto, usuarioId: 1)
         );
         Assert.Equal("El monto ofrecido debe ser mayor a 0.", ex.Message);
+    }
+
+    [Fact]
+    public async Task CrearEnvioAsync_FechaAnteriorAHoySegunElReloj_DebeLanzarValidacionException()
+    {
+        // "Hoy" sale del TimeProvider, así el test no depende de la fecha en que se corre.
+        using var context = CrearContextoEnMemoria();
+        var envioService = new EnvioService(context, new EstadoEnvioService(), new RelojFijo(new DateOnly(2026, 11, 20)));
+
+        var dto = new CrearEnvioDto
+        {
+            Origen = "Ituzaingó",
+            Destino = "Castelar",
+            Fecha = new DateOnly(2026, 11, 19),
+            PesoKg = 1m,
+            Tamano = TamanoPaquete.Pequeno,
+            Descripcion = "Sobre",
+            MontoOfrecido = 1500m
+        };
+
+        await Assert.ThrowsAsync<ValidacionException>(() => envioService.CrearEnvioAsync(dto, usuarioId: 1));
+
+        // El mismo día que el reloj sí se acepta.
+        dto.Fecha = new DateOnly(2026, 11, 20);
+        var creado = await envioService.CrearEnvioAsync(dto, usuarioId: 1);
+        Assert.Equal(new DateOnly(2026, 11, 20), creado.Fecha);
+    }
+
+    [Fact]
+    public async Task CancelarEnvioAsync_EnvioInexistente_DebeLanzarNotFoundException()
+    {
+        using var context = CrearContextoEnMemoria();
+        var envioService = new EnvioService(context, new EstadoEnvioService());
+
+        await Assert.ThrowsAsync<NotFoundException>(() => envioService.CancelarEnvioAsync(999, usuarioId: 1));
     }
 }
