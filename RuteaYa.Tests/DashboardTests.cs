@@ -102,8 +102,97 @@ public sealed class DashboardTests
         Assert.Equal((1, 2026, 11, CriterioOptimizacion.MaximizarGanancias), potencial.UltimaConsulta);
     }
 
-    private static DashboardService CrearServicio(RuteaYaDbContext dbContext, PotencialFijo? potencial = null) =>
-        new(dbContext, potencial ?? new PotencialFijo(0m), new RelojFijo(new DateOnly(2026, 11, 9)));
+    [Fact]
+    public async Task Oportunidades_cuenta_una_vez_cada_envio_compatible_con_algun_viaje_activo()
+    {
+        await using var dbContext = CrearDbContext();
+        dbContext.Usuarios.AddRange(
+            new Usuario { Id = 1, Nombre = "Juan", Apellido = "Pérez", Email = "juan@example.com" },
+            new Usuario { Id = 2, Nombre = "Ana", Apellido = "López", Email = "ana@example.com" });
+        dbContext.Viajes.AddRange(
+            ViajeDe(1, DiasSemana.Lunes, EstadoViaje.Activo),
+            ViajeDe(1, DiasSemana.Lunes | DiasSemana.Martes, EstadoViaje.Activo),
+            ViajeDe(1, DiasSemana.Miercoles, EstadoViaje.Inactivo));
+        dbContext.Envios.AddRange(
+            // Le sirve a los dos viajes del lunes: se cuenta una sola vez.
+            EnvioDe(10, usuarioId: 2, destino: "Cerca", fecha: Lunes),
+            // Solo el segundo viaje sale los martes.
+            EnvioDe(11, usuarioId: 2, destino: "A", fecha: Lunes.AddDays(1)),
+            // 6 km de desvío: supera el máximo de 5 km de los viajes.
+            EnvioDe(12, usuarioId: 2, destino: "MuyLejos", fecha: Lunes),
+            // Solo lo llevaría el viaje inactivo de los miércoles.
+            EnvioDe(13, usuarioId: 2, destino: "Cerca", fecha: Lunes.AddDays(2)),
+            // Es del propio usuario: no es una oportunidad para él.
+            EnvioDe(14, usuarioId: 1, destino: "Cerca", fecha: Lunes));
+        await dbContext.SaveChangesAsync();
+
+        var resumen = await CrearServicio(dbContext).ObtenerResumenAsync(1);
+
+        Assert.NotNull(resumen);
+        Assert.Equal(2, resumen.Oportunidades);
+        Assert.Equal(2, resumen.ProximosViajes);
+    }
+
+    [Fact]
+    public async Task Oportunidades_es_cero_sin_viajes_activos()
+    {
+        await using var dbContext = CrearDbContext();
+        dbContext.Usuarios.AddRange(
+            new Usuario { Id = 1, Nombre = "Juan", Apellido = "Pérez", Email = "juan@example.com" },
+            new Usuario { Id = 2, Nombre = "Ana", Apellido = "López", Email = "ana@example.com" });
+        dbContext.Viajes.Add(ViajeDe(1, DiasSemana.Lunes, EstadoViaje.Inactivo));
+        dbContext.Envios.Add(EnvioDe(10, usuarioId: 2, destino: "Cerca", fecha: Lunes));
+        await dbContext.SaveChangesAsync();
+
+        var resumen = await CrearServicio(dbContext).ObtenerResumenAsync(1);
+
+        Assert.NotNull(resumen);
+        Assert.Equal(0, resumen.Oportunidades);
+    }
+
+    /// <summary>Lunes 9 de noviembre de 2026, el "hoy" de estos tests.</summary>
+    private static readonly DateOnly Hoy = new(2026, 11, 9);
+
+    /// <summary>El lunes siguiente, para que los envíos sean futuros.</summary>
+    private static readonly DateOnly Lunes = Hoy.AddDays(7);
+
+    private static Viaje ViajeDe(int usuarioId, DiasSemana dias, EstadoViaje estado) => new()
+    {
+        UsuarioId = usuarioId,
+        Origen = "Moron",
+        Destino = "CABA",
+        DiasSemana = dias,
+        HoraSalida = new TimeOnly(8, 0),
+        HoraLlegada = new TimeOnly(9, 0),
+        MaxPaquetes = 3,
+        PesoMaximoKg = 10,
+        DesvioMaximoKm = 5,
+        Estado = estado
+    };
+
+    private static Envio EnvioDe(int id, int usuarioId, string destino, DateOnly fecha) => new()
+    {
+        Id = id,
+        UsuarioId = usuarioId,
+        Origen = "Haedo",
+        Destino = destino,
+        Fecha = fecha,
+        PesoKg = 1,
+        Tamano = TamanoPaquete.Pequeno,
+        Descripcion = "Caja",
+        MontoOfrecido = 1000,
+        Estado = EstadoEnvio.BuscandoConductor
+    };
+
+    /// <summary>
+    /// Las oportunidades usan el servicio real con rutas falsas, así el número del dashboard
+    /// es el mismo que mostraría la pantalla de Oportunidades.
+    /// </summary>
+    private static DashboardService CrearServicio(RuteaYaDbContext dbContext, PotencialFijo? potencial = null)
+    {
+        var reloj = new RelojFijo(Hoy);
+        return new(dbContext, potencial ?? new PotencialFijo(0m), new OportunidadService(dbContext, new RutasFalsas(), reloj), reloj);
+    }
 
     /// <summary>Doble del potencial mensual: el cálculo real ya se prueba en PotencialMensualServiceTests.</summary>
     private sealed class PotencialFijo(decimal ganancia) : IPotencialMensualService
