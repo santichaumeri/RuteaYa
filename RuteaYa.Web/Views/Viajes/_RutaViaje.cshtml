@@ -1,0 +1,49 @@
+@model RutaViajeViewModel?
+@{
+    string Duracion(int minutos) =>
+        minutos < 60 ? $"{minutos} min" : $"{minutos / 60} h {minutos % 60:00} min";
+}
+
+@if (Model is null || Model.Puntos.Count == 0)
+{
+    <p class="text-muted mb-0">Todavía no se calculó la ruta.</p>
+}
+else
+{
+    <div class="ruta-resumen">
+        <div>
+            <span>Distancia</span>
+            <strong>@Model.DistanciaKm.ToString("0.##") km</strong>
+        </div>
+        <div>
+            <span>Duración estimada</span>
+            <strong>@Duracion(Model.DuracionMinutos)</strong>
+        </div>
+        <div>
+            <span>Paradas intermedias</span>
+            <strong>@(Model.Puntos.Count - 2)</strong>
+        </div>
+    </div>
+
+    <ol class="ruta-mapa" aria-label="Recorrido en orden">
+        @for (var indice = 0; indice < Model.Puntos.Count; indice++)
+        {
+            var esOrigen = indice == 0;
+            var esDestino = indice == Model.Puntos.Count - 1;
+            var clase = esOrigen ? "ruta-punto-origen" : esDestino ? "ruta-punto-destino" : "ruta-punto-parada";
+            var etiqueta = esOrigen ? "Origen" : esDestino ? "Destino" : $"Parada {indice}";
+            <li class="ruta-punto @clase">
+                <span class="ruta-marcador" aria-hidden="true"></span>
+                <span>
+                    <small>@etiqueta</small>
+                    <strong>@Model.Puntos[indice]</strong>
+                </span>
+            </li>
+        }
+    </ol>
+
+    <p class="text-muted small mt-3 mb-0">
+        Mapa esquemático del recorrido. El servicio de rutas de prueba calcula distancias y tiempos,
+        pero no devuelve coordenadas para dibujar un mapa geográfico.
+    </p>
+}

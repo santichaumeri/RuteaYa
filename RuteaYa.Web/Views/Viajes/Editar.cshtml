@@ -128,6 +128,21 @@
                 </div>
             </div>
 
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                        <div>
+                            <h2 class="h5 mb-1">Ruta</h2>
+                            <p class="text-muted small mb-0">Se calcula con el origen, el destino y las paradas en el orden cargado.</p>
+                        </div>
+                        <button type="submit" name="accion" value="calcular-ruta" formnovalidate class="btn btn-outline-primary">
+                            @(Model.Ruta is null ? "Calcular ruta" : "Actualizar ruta")
+                        </button>
+                    </div>
+                    <partial name="_RutaViaje" model="Model.Ruta" />
+                </div>
+            </div>
+
             <div class="d-flex justify-content-end gap-2">
                 <a asp-action="Detalle" asp-route-id="@Model.Id" class="btn btn-light">Cancelar</a>
                 <button type="submit" class="btn btn-primary">Guardar cambios</button>

@@ -25,6 +25,12 @@ public interface IViajesApiClient
         int viajeId,
         EditarViajeViewModel modelo,
         CancellationToken cancellationToken);
+
+    Task<RutaViajeViewModel> CalcularRutaAsync(
+        string origen,
+        string destino,
+        IReadOnlyList<string> paradas,
+        CancellationToken cancellationToken);
 }
 
 public sealed class ViajesApiClient(
@@ -155,6 +161,24 @@ public sealed class ViajesApiClient(
         await response.EnsureApiSuccessAsync();
 
         return await LeerDetalleAsync(response, cancellationToken);
+    }
+
+    public async Task<RutaViajeViewModel> CalcularRutaAsync(
+        string origen,
+        string destino,
+        IReadOnlyList<string> paradas,
+        CancellationToken cancellationToken)
+    {
+        using var request = await CrearRequestAutenticadaAsync(HttpMethod.Post, "api/viajes/ruta");
+        request.Content = JsonContent.Create(new { Origen = origen, Destino = destino, Paradas = paradas });
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await response.EnsureApiSuccessAsync();
+
+        var ruta = await response.Content.ReadFromJsonAsync<RutaViajeViewModel>(cancellationToken);
+        return ruta ?? throw new ApiException(
+            (int)response.StatusCode,
+            "La API devolvió una respuesta vacía.");
     }
 
     private async Task<HttpRequestMessage> CrearRequestAutenticadaAsync(
