@@ -1,0 +1,256 @@
+@using RuteaYa.Web.Models.Optimizador
+@using RuteaYa.Web.Models.Potencial
+@using System.Globalization
+@model PotencialPaginaViewModel
+@{
+    ViewData["Title"] = "Potencial mensual";
+    var datos = Model.Datos;
+    var maxSemana = datos is null || datos.GananciaPorSemana.Count == 0 ? 0m : datos.GananciaPorSemana.Max(s => s.Ganancia);
+
+    static string Ancho(decimal valor, decimal maximo) =>
+        (maximo <= 0 ? 0m : Math.Clamp(valor / maximo * 100m, 0m, 100m)).ToString("0.##", CultureInfo.InvariantCulture);
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+            <div>
+                <h1 class="h3 mb-1">Potencial de ganancias mensual</h1>
+                <p class="text-muted mb-0">Cuánto podrías ganar en el mes con tus viajes recurrentes y los envíos disponibles hoy.</p>
+            </div>
+            <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-secondary">Volver</a>
+        </div>
+
+        <form method="get" asp-controller="Potencial" asp-action="Index" class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4 row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="periodo" class="form-label">Mes</label>
+                    <input type="month" id="periodo" name="periodo" class="form-control"
+                           value="@Model.Periodo" min="@Model.PeriodoMinimo" required data-recalcular />
+                </div>
+                <div class="col-md-5">
+                    <label for="criterio" class="form-label">Criterio de optimización</label>
+                    <select id="criterio" name="criterio" class="form-select" data-recalcular>
+                        @foreach (var (valor, texto) in CriteriosOptimizacion.Todos)
+                        {
+                            <option value="@valor" selected="@(Model.Criterio == valor)">@texto</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3 d-grid">
+                    <button type="submit" class="btn btn-primary">Calcular</button>
+                </div>
+            </div>
+        </form>
+
+        @if (Model.Error is not null)
+        {
+            <div class="alert alert-warning">@Model.Error</div>
+        }
+
+        @if (datos is not null)
+        {
+            if (datos.ViajesRecurrentes == 0)
+            {
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-5 text-center">
+                        <h2 class="h5">Todavía no tenés viajes activos</h2>
+                        <p class="text-muted mb-3">El potencial se calcula con tus viajes recurrentes. Registrá el recorrido que hacés habitualmente y volvé a esta pantalla.</p>
+                        <a asp-controller="Viajes" asp-action="Crear" class="btn btn-primary">Registrar un viaje</a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="row g-3 mb-3">
+                    <div class="col-md-7">
+                        <div class="card shadow-sm border-success border-2 h-100">
+                            <div class="card-body p-4">
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                    <span class="text-uppercase small fw-semibold text-success">Ganancia potencial</span>
+                                    <span class="badge bg-success-subtle text-success-emphasis">Estimación · no reserva envíos</span>
+                                </div>
+                                <div class="display-6 fw-semibold">@PotencialFormato.Pesos(datos.GananciaPotencial)</div>
+                                <div class="text-muted small mt-1">
+                                    Lo que pagarían los envíos disponibles que entran en tus viajes de @Model.NombreMes,
+                                    del @PotencialFormato.Rango(datos.Desde, datos.Hasta).
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-body p-4">
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                    <span class="text-uppercase small fw-semibold text-body-secondary">Ganancia efectiva</span>
+                                    <span class="badge bg-secondary-subtle text-secondary-emphasis">Ya cobrada</span>
+                                </div>
+                                <div class="display-6 fw-semibold">@PotencialFormato.Pesos(datos.GananciaEfectiva)</div>
+                                <div class="text-muted small mt-1">Envíos que ya entregaste este mes. No se suma a la potencial.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-sm-4">
+                        <div class="card shadow-sm border-0 h-100"><div class="card-body p-3">
+                            <div class="small text-muted">Viajes analizados</div>
+                            <div class="h4 mb-0">@datos.ViajesAnalizados</div>
+                            <div class="small text-muted">salidas de @datos.ViajesRecurrentes @(datos.ViajesRecurrentes == 1 ? "viaje recurrente" : "viajes recurrentes")</div>
+                        </div></div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="card shadow-sm border-0 h-100"><div class="card-body p-3">
+                            <div class="small text-muted">Paquetes posibles</div>
+                            <div class="h4 mb-0">@datos.PaquetesPosibles</div>
+                            <div class="small text-muted">sin repetir envíos entre viajes</div>
+                        </div></div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="card shadow-sm border-0 h-100"><div class="card-body p-3">
+                            <div class="small text-muted">Promedio por viaje</div>
+                            <div class="h4 mb-0">@PotencialFormato.Pesos(datos.PromedioPorViaje)</div>
+                            <div class="small text-muted">ganancia potencial ÷ salidas</div>
+                        </div></div>
+                    </div>
+                </div>
+
+                <div class="alert alert-light border small">
+                    <strong>Cómo se calcula:</strong> cada viaje se repite en las fechas del mes en que sale (desde hoy si el mes ya empezó).
+                    En cada salida se elige la mejor combinación de envíos compatibles con este criterio: @datos.CriterioDescripcion
+                    Un envío elegido para una salida no se cuenta en otra.
+                </div>
+
+                @if (datos.ViajesAnalizados == 0)
+                {
+                    <div class="alert alert-info">Tus viajes no salen ningún día de lo que queda de @Model.NombreMes. Probá con el mes siguiente.</div>
+                }
+                else if (datos.GananciaPotencial == 0)
+                {
+                    <div class="alert alert-info">
+                        Por ahora no hay envíos publicados que entren en tus viajes de este mes.
+                        El potencial cambia a medida que se publican envíos nuevos.
+                    </div>
+                }
+
+                <div class="row g-3 mb-4">
+                    <div class="col-lg-7">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-body p-4">
+                                <h2 class="h5 mb-3">Ganancia por semana</h2>
+                                @foreach (var semana in datos.GananciaPorSemana)
+                                {
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between small mb-1">
+                                            <span>@PotencialFormato.Rango(semana.Desde, semana.Hasta)</span>
+                                            <span><strong>@PotencialFormato.Pesos(semana.Ganancia)</strong> · @semana.Paquetes @(semana.Paquetes == 1 ? "paquete" : "paquetes")</span>
+                                        </div>
+                                        <div class="progress" style="height: .75rem;" role="img"
+                                             aria-label="Semana del @PotencialFormato.Rango(semana.Desde, semana.Hasta): @PotencialFormato.Pesos(semana.Ganancia)">
+                                            <div class="progress-bar bg-success" style="width: @Ancho(semana.Ganancia, maxSemana)%"></div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-body p-4">
+                                <h2 class="h5 mb-3">Mejor recorrido</h2>
+                                @if (datos.MejorRecorrido is { } mejor)
+                                {
+                                    <div class="fw-semibold">@mejor.Origen → @mejor.Destino</div>
+                                    <div class="text-muted small mb-2">@mejor.Fecha.ToString("dddd dd/MM", PotencialFormato.Cultura)</div>
+                                    <div class="h3 mb-1">@PotencialFormato.Pesos(mejor.Ganancia)</div>
+                                    <div class="text-muted small mb-3">
+                                        @mejor.Paquetes @(mejor.Paquetes == 1 ? "envío" : "envíos") ·
+                                        @mejor.PesoKg.ToString("0.##", PotencialFormato.Cultura) kg ·
+                                        @mejor.DesvioKm.ToString("0.##", PotencialFormato.Cultura) km de desvío
+                                    </div>
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       href="@Url.Content($"~/Viajes/{mejor.ViajeId}/Optimizador?fecha={mejor.Fecha:yyyy-MM-dd}&criterio={Model.Criterio}")">Ver en el optimizador</a>
+                                }
+                                else
+                                {
+                                    <p class="text-muted mb-0">Ninguna salida tiene envíos compatibles todavía.</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (datos.Detalle.Count > 0)
+                {
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body p-4 pb-2">
+                            <h2 class="h5 mb-1">Detalle por salida</h2>
+                            <p class="text-muted small mb-0">Qué envíos se eligieron en cada viaje y fecha. Es lo que justifica la estimación.</p>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Viaje</th>
+                                        <th>Envíos elegidos</th>
+                                        <th class="text-end">Peso</th>
+                                        <th class="text-end">Desvío</th>
+                                        <th class="text-end">Ganancia</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var salida in datos.Detalle)
+                                    {
+                                        <tr class="@(salida.Paquetes == 0 ? "text-muted" : "")">
+                                            <td class="text-nowrap">@PotencialFormato.Fecha(salida.Fecha)</td>
+                                            <td>@salida.Origen → @salida.Destino</td>
+                                            <td class="small">
+                                                @if (salida.Envios.Count == 0)
+                                                {
+                                                    <span>Sin envíos compatibles</span>
+                                                }
+                                                else
+                                                {
+                                                    @foreach (var envio in salida.Envios)
+                                                    {
+                                                        <div>#@envio.EnvioId @envio.Origen → @envio.Destino · @PotencialFormato.Pesos(envio.Pago)</div>
+                                                    }
+                                                }
+                                            </td>
+                                            <td class="text-end text-nowrap">@salida.PesoKg.ToString("0.##", PotencialFormato.Cultura) kg</td>
+                                            <td class="text-end text-nowrap">@salida.DesvioKm.ToString("0.##", PotencialFormato.Cultura) km</td>
+                                            <td class="text-end text-nowrap fw-semibold">@PotencialFormato.Pesos(salida.Ganancia)</td>
+                                            <td class="text-end">
+                                                @if (salida.Paquetes > 0)
+                                                {
+                                                    <a class="btn btn-sm btn-outline-primary text-nowrap"
+                                                       href="@Url.Content($"~/Viajes/{salida.ViajeId}/Optimizador?fecha={salida.Fecha:yyyy-MM-dd}&criterio={Model.Criterio}")">Optimizar</a>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            }
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Recalcula apenas se cambia el mes o el criterio; el botón queda por si el navegador no tiene JS.
+        document.querySelectorAll('[data-recalcular]').forEach(function (campo) {
+            campo.addEventListener('change', function () {
+                if (campo.form.checkValidity()) {
+                    campo.form.requestSubmit();
+                }
+            });
+        });
+    </script>
+}

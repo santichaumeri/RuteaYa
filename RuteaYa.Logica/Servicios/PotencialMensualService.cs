@@ -97,7 +97,8 @@ public sealed class PotencialMensualService(
 
         foreach (var (viaje, fecha) in salidas)
         {
-            var mejor = ElegirEnvios(candidatosPorViaje[viaje.Id], fecha, criterio, usados);
+            var candidatos = candidatosPorViaje[viaje.Id];
+            var mejor = ElegirEnvios(candidatos, fecha, criterio, usados);
             if (mejor is not null)
             {
                 usados.UnionWith(mejor.EnvioIds);
@@ -110,6 +111,7 @@ public sealed class PotencialMensualService(
                 Destino = viaje.Destino,
                 Fecha = fecha,
                 EnvioIds = mejor?.EnvioIds ?? [],
+                Envios = DetallarEnvios(candidatos, fecha, mejor?.EnvioIds ?? []),
                 Paquetes = mejor?.CantidadPaquetes ?? 0,
                 PesoKg = mejor?.PesoTotalKg ?? 0,
                 DesvioKm = mejor?.DesvioTotalKm ?? 0,
@@ -186,6 +188,37 @@ public sealed class PotencialMensualService(
         });
 
         return resultado.MejorCombinacion;
+    }
+
+    /// <summary>Datos de los envíos elegidos, en el orden en que los devolvió el optimizador.</summary>
+    private static List<EnvioPotencialResponse> DetallarEnvios(
+        CandidatosViaje candidatos,
+        DateOnly fecha,
+        IReadOnlyList<int> envioIds)
+    {
+        if (envioIds.Count == 0)
+        {
+            return [];
+        }
+
+        var delDia = candidatos.Fechas
+            .First(grupo => grupo.Fecha == fecha)
+            .Oportunidades
+            .ToDictionary(oportunidad => oportunidad.EnvioId);
+
+        return envioIds
+            .Select(id => delDia[id])
+            .Select(oportunidad => new EnvioPotencialResponse
+            {
+                EnvioId = oportunidad.EnvioId,
+                Origen = oportunidad.Origen,
+                Destino = oportunidad.Destino,
+                Descripcion = oportunidad.Descripcion,
+                PesoKg = oportunidad.PesoKg,
+                DesvioKm = oportunidad.DesvioKm,
+                Pago = oportunidad.Pago
+            })
+            .ToList();
     }
 
     /// <summary>Lo que el conductor ya ganó ese mes con envíos entregados en sus viajes.</summary>

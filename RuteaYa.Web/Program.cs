@@ -77,6 +77,14 @@ builder.Services.AddHttpClient<ITransportesApiClient, TransportesApiClient>(clie
     client.BaseAddress = new Uri(apiBaseUrl);
 });
 
+// Potencial de ganancias mensual (HU-21): el cálculo lo hace la API (HU-20).
+builder.Services.AddHttpClient<IPotencialApiClient, PotencialApiClient>(client =>
+{
+    var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
+        ?? throw new InvalidOperationException("Falta la configuración ApiBaseUrl.");
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

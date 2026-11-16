@@ -61,10 +61,24 @@ public sealed class SalidaPotencialResponse
     public string Destino { get; init; } = string.Empty;
     public DateOnly Fecha { get; init; }
     public IReadOnlyList<int> EnvioIds { get; init; } = [];
+
+    /// <summary>Los envíos elegidos para esta salida, para mostrar de dónde sale la ganancia.</summary>
+    public IReadOnlyList<EnvioPotencialResponse> Envios { get; init; } = [];
     public int Paquetes { get; init; }
     public decimal PesoKg { get; init; }
     public decimal DesvioKm { get; init; }
     public decimal Ganancia { get; init; }
+}
+
+public sealed class EnvioPotencialResponse
+{
+    public int EnvioId { get; init; }
+    public string Origen { get; init; } = string.Empty;
+    public string Destino { get; init; } = string.Empty;
+    public string Descripcion { get; init; } = string.Empty;
+    public decimal PesoKg { get; init; }
+    public decimal DesvioKm { get; init; }
+    public decimal Pago { get; init; }
 }
 
 public sealed class GananciaSemanaResponse
