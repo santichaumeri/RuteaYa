@@ -1,5 +1,4 @@
-﻿@using RuteaYa.Entidades.Enums
-@model List<RuteaYa.Logica.Dtos.Envios.EnvioDetalleDto>
+﻿@model IReadOnlyList<RuteaYa.Web.Models.Envios.EnvioViewModel>
 
 @{
     ViewData["Title"] = "Mis Envíos";
@@ -38,15 +37,15 @@
         <div class="card-body py-2">
             <div class="d-flex flex-wrap gap-2 align-items-center">
                 <span class="fw-semibold text-secondary me-2">Filtrar por estado:</span>
-                <a asp-action="Index" class="btn btn-sm @(estadoFiltro == null ? "btn-dark" : "btn-outline-secondary")">
+                <a asp-action="Index" class="btn btn-sm @(estadoFiltro == null ? "btn-secondary" : "btn-outline-secondary")">
                     Todos
                 </a>
                 <a asp-action="Index" asp-route-estado="@EstadoEnvio.BuscandoConductor"
-                   class="btn btn-sm @(estadoFiltro == EstadoEnvio.BuscandoConductor ? "btn-warning text-dark" : "btn-outline-warning text-dark")">
+                   class="btn btn-sm @(estadoFiltro == EstadoEnvio.BuscandoConductor ? "btn-warning text-dark" : "btn-outline-warning")">
                     Buscando conductor
                 </a>
                 <a asp-action="Index" asp-route-estado="@EstadoEnvio.ConductorAsignado"
-                   class="btn btn-sm @(estadoFiltro == EstadoEnvio.ConductorAsignado ? "btn-info text-dark" : "btn-outline-info text-dark")">
+                   class="btn btn-sm @(estadoFiltro == EstadoEnvio.ConductorAsignado ? "btn-info text-dark" : "btn-outline-info")">
                     Conductor asignado
                 </a>
                 <a asp-action="Index" asp-route-estado="@EstadoEnvio.Retirado"

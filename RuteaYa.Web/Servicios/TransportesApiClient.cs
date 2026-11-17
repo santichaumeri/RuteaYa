@@ -1,14 +1,14 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
-using RuteaYa.Logica.Dtos.Transportes;
+using RuteaYa.Web.Models.Transportes;
 
 namespace RuteaYa.Web.Servicios;
 
 public interface ITransportesApiClient
 {
-    Task<IReadOnlyList<TransporteDto>> ObtenerMisTransportesAsync(CancellationToken cancellationToken);
-    Task<TransporteDto> ObtenerDetalleAsync(int asignacionId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<TransporteViewModel>> ObtenerMisTransportesAsync(CancellationToken cancellationToken);
+    Task<TransporteViewModel> ObtenerDetalleAsync(int asignacionId, CancellationToken cancellationToken);
     Task MarcarRetiradoAsync(int asignacionId, CancellationToken cancellationToken);
     Task MarcarEnCaminoAsync(int asignacionId, CancellationToken cancellationToken);
     Task MarcarEntregadoAsync(int asignacionId, CancellationToken cancellationToken);
@@ -19,23 +19,23 @@ public sealed class TransportesApiClient(
     HttpClient httpClient,
     IHttpContextAccessor httpContextAccessor) : ITransportesApiClient
 {
-    public async Task<IReadOnlyList<TransporteDto>> ObtenerMisTransportesAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<TransporteViewModel>> ObtenerMisTransportesAsync(CancellationToken cancellationToken)
     {
         using var request = CrearRequestAutenticada("api/transportes", HttpMethod.Get);
         using var response = await httpClient.SendAsync(request, cancellationToken);
         await response.EnsureApiSuccessAsync();
 
-        return await response.Content.ReadFromJsonAsync<List<TransporteDto>>(cancellationToken)
+        return await response.Content.ReadFromJsonAsync<List<TransporteViewModel>>(cancellationToken)
                ?? [];
     }
 
-    public async Task<TransporteDto> ObtenerDetalleAsync(int asignacionId, CancellationToken cancellationToken)
+    public async Task<TransporteViewModel> ObtenerDetalleAsync(int asignacionId, CancellationToken cancellationToken)
     {
         using var request = CrearRequestAutenticada($"api/transportes/{asignacionId}", HttpMethod.Get);
         using var response = await httpClient.SendAsync(request, cancellationToken);
         await response.EnsureApiSuccessAsync();
 
-        return (await response.Content.ReadFromJsonAsync<TransporteDto>(cancellationToken))!;
+        return (await response.Content.ReadFromJsonAsync<TransporteViewModel>(cancellationToken))!;
     }
 
     public Task MarcarRetiradoAsync(int asignacionId, CancellationToken cancellationToken) =>

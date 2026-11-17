@@ -23,6 +23,12 @@ public sealed class DashboardApiClient(HttpClient httpClient, IHttpContextAccess
             return DashboardApiResult.NoAutorizadoResult();
         }
 
+        // El token es válido pero su usuario ya no existe (por ejemplo, se recreó la base).
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return DashboardApiResult.UsuarioInexistenteResult();
+        }
+
         if (!response.IsSuccessStatusCode)
         {
             return DashboardApiResult.ErrorResult();
@@ -38,9 +44,11 @@ public sealed class DashboardApiClient(HttpClient httpClient, IHttpContextAccess
 public sealed record DashboardApiResult(
     DashboardViewModel? Resumen,
     bool EstaNoAutorizado,
-    bool TieneError)
+    bool TieneError,
+    bool UsuarioInexistente = false)
 {
     public static DashboardApiResult ExitosoResult(DashboardViewModel resumen) => new(resumen, false, false);
     public static DashboardApiResult NoAutorizadoResult() => new(null, true, false);
+    public static DashboardApiResult UsuarioInexistenteResult() => new(null, false, false, true);
     public static DashboardApiResult ErrorResult() => new(null, false, true);
 }
