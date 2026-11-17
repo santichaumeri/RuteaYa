@@ -16,6 +16,13 @@ builder.Services.AddControllersWithViews(options =>
     mensajes.SetAttemptedValueIsInvalidAccessor(
         (valor, campo) => $"El valor '{valor}' no es válido para {campo}.");
 });
+
+builder.Services.AddHttpClient<IHistorialApiClient, HistorialApiClient>(client =>
+{
+    var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
+        ?? throw new InvalidOperationException("Falta la configuración ApiBaseUrl.");
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient<DashboardApiClient>(client =>
 {
