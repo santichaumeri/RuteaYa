@@ -1,0 +1,27 @@
+@using RuteaYa.Entidades.Enums
+@model RuteaYa.Web.Models.Historial.HistorialDetalleViewModel
+@{
+    ViewData["Title"] = "Detalle del historial";
+}
+
+<h1>Detalle de operación</h1>
+<p class="text-muted">@Model.Ruta</p>
+
+<div class="card">
+    <div class="card-body">
+        <h2 class="h5">Ganancia efectiva: @Model.GananciaEfectiva.ToString("C0")</h2>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead><tr><th>Envío</th><th>Fecha</th><th>Estado</th><th class="text-end">Ganancia</th></tr></thead>
+                <tbody>
+                @foreach (var envio in Model.Envios)
+                {
+                    <tr><td>#@envio.EnvioId</td><td>@envio.Fecha.ToString("dd/MM/yyyy")</td><td>@envio.Estado</td><td class="text-end">@envio.Ganancia.ToString("C0")</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<a asp-action="Index" class="btn btn-outline-secondary mt-3">Volver al historial</a>

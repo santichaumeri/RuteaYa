@@ -72,7 +72,9 @@ public class TransportesController(ITransportesApiClient transportesApiClient) :
                                                   or StatusCodes.Status404NotFound
                                                   or StatusCodes.Status409Conflict)
         {
-            TempData["Error"] = ex.Message;
+            TempData["Error"] = string.IsNullOrWhiteSpace(ex.Message)
+                ? "No se pudo actualizar el estado del paquete."
+                : ex.Message;
         }
         catch (ApiException ex)
         {

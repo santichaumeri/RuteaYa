@@ -56,6 +56,7 @@ builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IViajeService, ViajeService>();
+builder.Services.AddScoped<IHistorialService, HistorialService>();
 
 // REGISTROS DE ENVÍOS (HU-07, HU-08, HU-09)
 builder.Services.AddScoped<IEstadoEnvioService, EstadoEnvioService>();
