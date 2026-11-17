@@ -12,7 +12,7 @@ Plataforma de transporte colaborativo. ASP.NET Core MVC + Web API + Entity Frame
 | `RuteaYa.Web` | MVC (consume la API por HTTP) | nadie |
 | `RuteaYa.Tests` | Tests unitarios (xUnit) | `Entidades`, `Logica`, `Api` |
 
-Regla: `RuteaYa.Web` **no** referencia a otros proyectos ni usa EF/DbContext. Toda la información la pide a la API.
+Regla: `RuteaYa.Web` **no** referencia a otros proyectos ni usa EF/DbContext. Toda la información la pide a la API por HTTP y la recibe en sus propios view models (`RuteaYa.Web/Models`). Los enums que necesita (estados, tamaño, días) están copiados en `RuteaYa.Web/Models/Enums.cs` con los mismos valores numéricos que usa la API.
 
 ## Requisitos
 

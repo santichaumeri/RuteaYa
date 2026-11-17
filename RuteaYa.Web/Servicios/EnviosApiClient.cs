@@ -1,81 +1,63 @@
-﻿using RuteaYa.Entidades.Enums;
-using RuteaYa.Logica.Dtos.Envios;
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
+using System.Security.Claims;
+using RuteaYa.Web.Models;
+using RuteaYa.Web.Models.Envios;
 
 namespace RuteaYa.Web.Servicios;
 
-public class EnviosApiClient : IEnviosApiClient
+public class EnviosApiClient(HttpClient httpClient, IHttpContextAccessor httpContextAccessor) : IEnviosApiClient
 {
-    private readonly HttpClient _httpClient;
-    private readonly IHttpContextAccessor _httpContextAccessor;
-
-    public EnviosApiClient(HttpClient httpClient, IHttpContextAccessor httpContextAccessor)
+    public async Task<IReadOnlyList<EnvioViewModel>> ObtenerMisEnviosAsync(EstadoEnvio? estado, CancellationToken cancellationToken)
     {
-        _httpClient = httpClient;
-        _httpContextAccessor = httpContextAccessor;
+        var ruta = estado.HasValue ? $"api/envios?estado={(int)estado.Value}" : "api/envios";
+        using var request = CrearRequestAutenticada(HttpMethod.Get, ruta);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await response.EnsureApiSuccessAsync();
+
+        return await response.Content.ReadFromJsonAsync<List<EnvioViewModel>>(cancellationToken) ?? [];
     }
 
-    private void AdjuntarTokenAutenticacion()
+    public async Task<EnvioViewModel> ObtenerPorIdAsync(int id, CancellationToken cancellationToken)
     {
-        var token = _httpContextAccessor.HttpContext?.User.FindFirst("access_token")?.Value;
+        using var request = CrearRequestAutenticada(HttpMethod.Get, $"api/envios/{id}");
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await response.EnsureApiSuccessAsync();
 
-        if(!string.IsNullOrEmpty(token))
-        {
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        }
+        return await LeerEnvioAsync(response, cancellationToken);
     }
 
-    public async Task<List<EnvioDetalleDto>> ObtenerMisEnviosAsync(EstadoEnvio? estado = null)
+    public async Task<EnvioViewModel> CrearEnvioAsync(CrearEnvioViewModel modelo, CancellationToken cancellationToken)
     {
-        AdjuntarTokenAutenticacion();
+        using var request = CrearRequestAutenticada(HttpMethod.Post, "api/envios");
+        request.Content = JsonContent.Create(modelo);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await response.EnsureApiSuccessAsync();
 
-        var url = "api/envios";
-        if (estado.HasValue)
-        {
-            url += $"?estado={estado.Value}";
-        }
-
-        var response = await _httpClient.GetAsync(url);
-        if (!response.IsSuccessStatusCode)
-        {
-            return new List<EnvioDetalleDto>();
-        }
-
-        return await response.Content.ReadFromJsonAsync<List<EnvioDetalleDto>>()
-               ?? new List<EnvioDetalleDto>();
+        return await LeerEnvioAsync(response, cancellationToken);
     }
 
-    public async Task<EnvioDetalleDto?> ObtenerPorIdAsync(int id)
+    public async Task CancelarEnvioAsync(int id, CancellationToken cancellationToken)
     {
-        AdjuntarTokenAutenticacion();
+        using var request = CrearRequestAutenticada(HttpMethod.Post, $"api/envios/{id}/cancelar");
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await response.EnsureApiSuccessAsync();
+    }
 
-        var response = await _httpClient.GetAsync($"api/envios/{id}");
-        if (!response.IsSuccessStatusCode)
+    /// <summary>Arma el pedido con el token JWT guardado en la cookie de sesión.</summary>
+    private HttpRequestMessage CrearRequestAutenticada(HttpMethod metodo, string ruta)
+    {
+        var token = httpContextAccessor.HttpContext?.User.FindFirstValue("access_token");
+        if (string.IsNullOrWhiteSpace(token))
         {
-            return null;
+            throw new ApiException(StatusCodes.Status401Unauthorized, "La sesión no contiene un token válido.");
         }
 
-        return await response.Content.ReadFromJsonAsync<EnvioDetalleDto>();
+        var request = new HttpRequestMessage(metodo, ruta);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return request;
     }
 
-    public async Task<EnvioDetalleDto?> CrearEnvioAsync(CrearEnvioDto dto)
-    {
-        AdjuntarTokenAutenticacion();
-
-        var response = await _httpClient.PostAsJsonAsync("api/envios", dto);
-        if (!response.IsSuccessStatusCode)
-        {
-            return null;
-        }
-
-        return await response.Content.ReadFromJsonAsync<EnvioDetalleDto>();
-    }
-
-    public async Task<bool> CancelarEnvioAsync(int id)
-    {
-        AdjuntarTokenAutenticacion();
-
-        var response = await _httpClient.PostAsync($"api/envios/{id}/cancelar", null);
-        return response.IsSuccessStatusCode;
-    }
+    private static async Task<EnvioViewModel> LeerEnvioAsync(HttpResponseMessage response, CancellationToken cancellationToken) =>
+        await response.Content.ReadFromJsonAsync<EnvioViewModel>(cancellationToken)
+            ?? throw new ApiException((int)response.StatusCode, "La API devolvió una respuesta vacía.");
 }

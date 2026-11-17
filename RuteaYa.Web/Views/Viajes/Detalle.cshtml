@@ -41,7 +41,16 @@
                     <dt class="col-sm-4">Destino</dt>
                     <dd class="col-sm-8">@Model.Destino</dd>
                     <dt class="col-sm-4">Estado</dt>
-                    <dd class="col-sm-8">@Model.Estado</dd>
+                    <dd class="col-sm-8">
+                        @if (Model.Estado == (int)EstadoViaje.Activo)
+                        {
+                            <span class="badge bg-success">Activo</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Inactivo</span>
+                        }
+                    </dd>
                 </dl>
             </div>
         </div>

@@ -1,4 +1,3 @@
-using RuteaYa.Entidades.Enums;
 
 namespace RuteaYa.Web.Models.Historial;
 

@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
-using RuteaYa.Logica.Servicios;
 using RuteaYa.Web.Servicios;
 
 var builder = WebApplication.CreateBuilder(args);
