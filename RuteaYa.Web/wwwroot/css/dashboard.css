@@ -1,13 +1,7 @@
-/* Dashboard (pantalla de inicio). Los colores salen de las variables definidas en site.css (--qz-*),
-   así que cambian solos con el tema claro/oscuro. Acá solo se definen las variables propias del sidebar y los badges. */
+/* Dashboard (pantalla de inicio): tarjetas, paneles y badges. El sidebar está en app-shell.css,
+   que lo usan todas las vistas. Los colores salen de las variables de site.css (--qz-*). */
 
 :root {
-    --qz-on-primary: #ffffff;
-    --qz-sidebar-bg: var(--qz-hero-1);
-    --qz-sidebar-text: rgba(255, 255, 255, 0.82);
-    --qz-sidebar-muted: rgba(255, 255, 255, 0.62);
-    --qz-sidebar-hover: rgba(255, 255, 255, 0.14);
-    --qz-sidebar-user: rgba(0, 0, 0, 0.2);
     --qz-warn-bg: #fff2df;
     --qz-warn-text: #bb650d;
 }
@@ -15,119 +9,6 @@
 :root[data-bs-theme="dark"] {
     --qz-warn-bg: #3a2a10;
     --qz-warn-text: #fbbf77;
-}
-
-* {
-    box-sizing: border-box;
-}
-
-body.dashboard-page {
-    margin: 0;
-}
-
-.dashboard-shell {
-    display: flex;
-    flex: 1 0 auto;
-    min-height: 100vh;
-}
-
-.dashboard-sidebar {
-    display: flex;
-    width: 230px;
-    min-height: 100vh;
-    padding: 18px 10px 12px;
-    flex-direction: column;
-    background: var(--qz-sidebar-bg);
-    color: var(--qz-on-primary);
-}
-
-.brand {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0 8px 18px;
-    color: var(--qz-on-primary);
-    font-family: Poppins, Inter, system-ui, sans-serif;
-    font-size: 19px;
-    font-weight: 600;
-    text-decoration: none;
-}
-
-.brand:hover {
-    color: var(--qz-on-primary);
-}
-
-.sidebar-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-}
-
-.sidebar-link {
-    padding: 9px 10px;
-    border-radius: 9px;
-    color: var(--qz-sidebar-text);
-    font-size: 13px;
-    text-decoration: none;
-}
-
-.sidebar-link:hover,
-.sidebar-link.active {
-    background: var(--qz-sidebar-hover);
-    color: var(--qz-on-primary);
-}
-
-.sidebar-user {
-    margin-top: auto;
-    padding: 10px 8px;
-    border-radius: 9px;
-    background: var(--qz-sidebar-user);
-    font-size: 12px;
-}
-
-.sidebar-user-top {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.sidebar-user strong {
-    display: block;
-    margin-bottom: 4px;
-}
-
-.logout-button {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--qz-sidebar-muted);
-    font-size: 11px;
-}
-
-.logout-button:hover {
-    color: var(--qz-on-primary);
-}
-
-.theme-toggle {
-    padding: 0 6px;
-    border: 1px solid var(--qz-sidebar-muted);
-    border-radius: 6px;
-    background: transparent;
-    color: var(--qz-on-primary);
-    font-size: 13px;
-    line-height: 1.5;
-}
-
-.theme-toggle:hover {
-    background: var(--qz-sidebar-hover);
-}
-
-.dashboard-content {
-    flex: 0 1 auto;
-    width: min(100%, 1050px);
-    margin: 0 auto;
-    padding: 25px 30px 45px;
 }
 
 .dashboard-header {
@@ -344,14 +225,6 @@ body.dashboard-page {
 }
 
 @media (max-width: 800px) {
-    .dashboard-sidebar {
-        width: 190px;
-    }
-
-    .dashboard-content {
-        padding: 20px 16px;
-    }
-
     .summary-grid,
     .dashboard-panels {
         grid-template-columns: 1fr 1fr;
@@ -359,24 +232,6 @@ body.dashboard-page {
 }
 
 @media (max-width: 600px) {
-    .dashboard-shell {
-        display: block;
-    }
-
-    .dashboard-sidebar {
-        width: 100%;
-        min-height: auto;
-    }
-
-    .sidebar-nav {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .sidebar-user {
-        margin-top: 14px;
-    }
-
     .dashboard-header,
     .dashboard-panels {
         display: block;
