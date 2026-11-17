@@ -130,11 +130,24 @@ var app = builder.Build();
 
 // En desarrollo, aplica las migraciones pendientes al iniciar (crea la base si no existe).
 // Así después de un git pull no hace falta correr "dotnet ef database update" a mano.
+// Después carga los datos de prueba (HU-22) si todavía no están; se desactiva con DatosIniciales:Cargar = false.
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<RuteaYaDbContext>();
     await db.Database.MigrateAsync();
+
+    if (app.Configuration.GetValue("DatosIniciales:Cargar", true)
+        && await DatosIniciales.CargarAsync(
+            db,
+            scope.ServiceProvider.GetRequiredService<IPasswordHasher<Usuario>>(),
+            scope.ServiceProvider.GetRequiredService<TimeProvider>()))
+    {
+        app.Logger.LogInformation(
+            "Datos iniciales cargados. Usuarios de prueba: {Emails} (contraseña {Password}).",
+            string.Join(", ", DatosIniciales.Emails),
+            DatosIniciales.PasswordDePrueba);
+    }
 }
 
 app.UseExceptionHandler();   // tiene que ir primero en el pipeline
