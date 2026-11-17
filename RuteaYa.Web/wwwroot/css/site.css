@@ -394,3 +394,9 @@ main {
   text-transform: uppercase;
   color: var(--bs-secondary-color);
 }
+
+/* Detalle del viaje: la lista de paquetes asignados se desplaza si es larga. */
+.paquetes-asignados {
+  max-height: 26rem;
+  overflow-y: auto;
+}

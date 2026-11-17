@@ -382,6 +382,39 @@ public sealed class ViajeServiceTests
         Assert.Equal(["Moron", "Haedo", "CABA"], detalle.Ruta.Puntos);
     }
 
+    [Fact]
+    public async Task ObtenerDetalle_lista_los_paquetes_asignados_del_mas_reciente_al_mas_antiguo()
+    {
+        await using var dbContext = CrearDbContext();
+        var service = new ViajeService(dbContext, new MockRoutingService());
+        var creado = await service.CrearViajeAsync(7, CrearRequestValida(), CancellationToken.None);
+        dbContext.Asignaciones.AddRange(
+            new Asignacion
+            {
+                ViajeId = creado.Id,
+                Ganancia = 3000m,
+                Envio = new Envio { UsuarioId = 2, Origen = "Haedo", Destino = "CABA", Descripcion = "Caja", PesoKg = 2, Fecha = new DateOnly(2026, 11, 2), Estado = EstadoEnvio.Entregado }
+            },
+            new Asignacion
+            {
+                ViajeId = creado.Id,
+                Ganancia = 4500m,
+                Envio = new Envio { UsuarioId = 3, Origen = "Moron", Destino = "Flores", Descripcion = "Notebook", PesoKg = 3, Fecha = new DateOnly(2026, 11, 23), Estado = EstadoEnvio.ConductorAsignado }
+            });
+        await dbContext.SaveChangesAsync();
+
+        var detalle = await service.ObtenerDetalleAsync(creado.Id, 7, CancellationToken.None);
+
+        Assert.Equal(2, detalle.CantidadPaquetesAsignados);
+        Assert.Equal(["Notebook", "Caja"], detalle.PaquetesAsignados.Select(x => x.Descripcion));
+        var notebook = detalle.PaquetesAsignados[0];
+        Assert.Equal(EstadoEnvio.ConductorAsignado, notebook.Estado);
+        Assert.Equal(4500m, notebook.Ganancia);
+        Assert.Equal("Moron", notebook.Origen);
+        Assert.Equal("Flores", notebook.Destino);
+        Assert.Equal(new DateOnly(2026, 11, 23), notebook.Fecha);
+    }
+
     private static CrearViajeRequest CrearRequestValida() => new()
     {
         Origen = "Belgrano",

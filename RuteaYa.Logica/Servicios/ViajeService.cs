@@ -52,7 +52,7 @@ public sealed class ViajeService(
             .Select(parada => NormalizarDireccion(parada?.Direccion ?? string.Empty))
             .ToList();
 
-        ValidarParadas(paradas, origen, destino);
+        ReglasParadas.Validar(paradas, origen, destino);
 
         var viaje = new Viaje
         {
@@ -171,7 +171,7 @@ public sealed class ViajeService(
             .Select(parada => NormalizarDireccion(parada?.Direccion ?? string.Empty))
             .ToList();
 
-        ValidarParadas(paradas, origen, destino);
+        ReglasParadas.Validar(paradas, origen, destino);
 
         viaje.Origen = origen;
         viaje.Destino = destino;
@@ -213,7 +213,7 @@ public sealed class ViajeService(
         var paradas = (request.Paradas ?? [])
             .Select(NormalizarDireccion)
             .ToList();
-        ValidarParadas(paradas, origen, destino);
+        ReglasParadas.Validar(paradas, origen, destino);
 
         return await CalcularRutaAsync(origen, paradas, destino);
     }
@@ -304,34 +304,6 @@ public sealed class ViajeService(
         }
     }
 
-    private static void ValidarParadas(
-        IReadOnlyCollection<string> paradas,
-        string origen,
-        string destino)
-    {
-        var direcciones = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var parada in paradas)
-        {
-            if (parada.Length == 0)
-            {
-                throw new ValidacionException("La dirección de cada parada es obligatoria.");
-            }
-
-            if (string.Equals(parada, origen, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(parada, destino, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new ValidacionException(
-                    "Una parada no puede coincidir con el origen ni con el destino.");
-            }
-
-            if (!direcciones.Add(parada))
-            {
-                throw new ValidacionException("No se pueden repetir direcciones de paradas.");
-            }
-        }
-    }
-
     private static bool EsHoraValida(TimeSpan hora) =>
         hora >= TimeSpan.Zero && hora < TimeSpan.FromDays(1);
 
@@ -345,6 +317,7 @@ public sealed class ViajeService(
         var viaje = await dbContext.Viajes
             .Include(x => x.Paradas)
             .Include(x => x.Asignaciones)
+                .ThenInclude(x => x.Envio)
             .SingleOrDefaultAsync(x => x.Id == viajeId, cancellationToken);
 
         return viaje ?? throw new NotFoundException("El viaje no existe.");
@@ -397,6 +370,22 @@ public sealed class ViajeService(
         DesvioMaximoKm = viaje.DesvioMaximoKm,
         Estado = viaje.Estado,
         CantidadPaquetesAsignados = viaje.Asignaciones.Count,
+        PaquetesAsignados = viaje.Asignaciones
+            .OrderByDescending(asignacion => asignacion.Envio.Fecha)
+            .ThenBy(asignacion => asignacion.Id)
+            .Select(asignacion => new PaqueteAsignadoResponse
+            {
+                AsignacionId = asignacion.Id,
+                EnvioId = asignacion.EnvioId,
+                Descripcion = asignacion.Envio.Descripcion,
+                Origen = asignacion.Envio.Origen,
+                Destino = asignacion.Envio.Destino,
+                Fecha = asignacion.Envio.Fecha,
+                PesoKg = asignacion.Envio.PesoKg,
+                Estado = asignacion.Envio.Estado,
+                Ganancia = asignacion.Ganancia
+            })
+            .ToList(),
         Ruta = ruta,
         Paradas = viaje.Paradas
             .OrderBy(parada => parada.Orden)
