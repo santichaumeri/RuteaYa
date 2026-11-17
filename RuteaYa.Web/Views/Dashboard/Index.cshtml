@@ -1,155 +1,104 @@
 @model RuteaYa.Web.Models.Dashboard.DashboardViewModel
 @using System.Globalization
 @{
-    Layout = null;
+    ViewData["Title"] = "Dashboard";
     var cultura = CultureInfo.GetCultureInfo("es-AR");
 }
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard - RuteaYa</title>
-    @* Aplica el tema antes de pintar para evitar el parpadeo blanco. Preferencia guardada o prefers-color-scheme. *@
-    <script>
-        (function () {
-            var tema = null;
-            try { tema = localStorage.getItem('qz-tema'); } catch (e) { }
-            if (tema !== 'dark' && tema !== 'light') {
-                tema = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-            }
-            document.documentElement.setAttribute('data-bs-theme', tema);
-        })();
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+@section Styles {
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
-</head>
-<body class="dashboard-page">
-    <div class="dashboard-shell">
-        <aside class="dashboard-sidebar">
-            <a class="brand" asp-controller="Dashboard" asp-action="Index"><span class="qz-logo" aria-hidden="true">R</span>RuteaYa</a>
-            <nav class="sidebar-nav" aria-label="Menú principal">
-                <a class="sidebar-link active" asp-controller="Dashboard" asp-action="Index">Inicio</a>
-                <a class="sidebar-link" asp-controller="Viajes" asp-action="Index">Mis viajes</a>
-                <a class="sidebar-link" asp-controller="Envios" asp-action="Index">Mis envíos</a>
-                <a class="sidebar-link" asp-controller="Oportunidades" asp-action="Index">Oportunidades</a>
-                <a class="sidebar-link" asp-controller="Optimizador" asp-action="Index">Optimizador</a>
-                <a class="sidebar-link" asp-controller="Transportes" asp-action="Index">Mis transportes</a>
-                <a class="sidebar-link" asp-controller="Potencial" asp-action="Index">Potencial mensual</a>
-                <a class="sidebar-link" asp-controller="Historial" asp-action="Index">Historial</a>
-            </nav>
-            <div class="sidebar-user">
-                <div class="sidebar-user-top">
-                    <strong>@Model.NombreUsuario</strong>
-                    <button type="button" id="qz-tema-toggle" class="theme-toggle"
-                            aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">&#9790;</button>
-                </div>
-                <form asp-controller="Account" asp-action="Logout" method="post">
-                    <button class="logout-button" type="submit">Cerrar sesión</button>
-                </form>
-            </div>
-        </aside>
+}
 
-        <main class="dashboard-content">
-            <header class="dashboard-header">
-                <div>
-                    <h1>Hola, @Model.NombreUsuario</h1>
-                    <p>Esto pasa con tus viajes y envíos.</p>
-                </div>
-                <div class="quick-actions">
-                    <a class="button button-light" asp-controller="Envios" asp-action="Crear">Nuevo envío</a>
-                    <a class="button button-dark" asp-controller="Viajes" asp-action="Crear">Nuevo viaje</a>
-                </div>
-            </header>
-
-            @if (TempData["MensajeViaje"] is string mensajeViaje)
-            {
-                <div class="alert alert-success mb-3" role="alert">
-                    @mensajeViaje
-                </div>
-            }
-
-            <section class="summary-grid" aria-label="Resumen">
-                <article class="summary-card">
-                    <span>Próximos viajes</span>
-                    <strong>@Model.ProximosViajes</strong>
-                </article>
-                <article class="summary-card">
-                    <span>Envíos pendientes</span>
-                    <strong>@Model.EnviosPendientes</strong>
-                </article>
-                <article class="summary-card">
-                    <span>Oportunidades</span>
-                    <strong>@Model.Oportunidades</strong>
-                </article>
-                <a class="summary-card summary-card-highlight summary-card-link" asp-controller="Potencial" asp-action="Index"
-                   title="Ver el detalle del potencial mensual">
-                    <span>Potencial del mes</span>
-                    <strong>@Model.PotencialMes.ToString("C0", cultura)</strong>
-                    <small>Estimación · ver detalle</small>
-                </a>
-            </section>
-
-            <section class="dashboard-panels">
-                <article class="dashboard-panel">
-                    <div class="panel-heading">
-                        <h2>Próximos viajes</h2>
-                        <a asp-controller="Viajes" asp-action="Index">Ver todos</a>
-                    </div>
-                    @if (Model.Viajes.Count == 0)
-                    {
-                        <p class="empty-state">Todavía no tenés viajes activos.</p>
-                    }
-                    else
-                    {
-                        <div class="dashboard-list">
-                            @foreach (var viaje in Model.Viajes)
-                            {
-                                <a class="dashboard-list-item" asp-controller="Viajes" asp-action="Detalle" asp-route-id="@viaje.Id">
-                                    <span>
-                                        <strong>@viaje.Ruta</strong>
-                                        <small>@viaje.Dias · @viaje.Horario</small>
-                                    </span>
-                                    <span class="status-badge status-active">@viaje.Estado</span>
-                                </a>
-                            }
-                        </div>
-                    }
-                </article>
-
-                <article class="dashboard-panel">
-                    <div class="panel-heading">
-                        <h2>Envíos pendientes</h2>
-                        <a asp-controller="Envios" asp-action="Index">Ver todos</a>
-                    </div>
-                    @if (Model.Envios.Count == 0)
-                    {
-                        <p class="empty-state">No tenés envíos pendientes.</p>
-                    }
-                    else
-                    {
-                        <div class="dashboard-list">
-                            @foreach (var envio in Model.Envios)
-                            {
-                                <a class="dashboard-list-item" asp-controller="Envios" asp-action="Detalle" asp-route-id="@envio.Id">
-                                    <span>
-                                        <strong>@envio.Ruta</strong>
-                                        <small>@envio.Descripcion · @envio.MontoOfrecido.ToString("C0", cultura)</small>
-                                    </span>
-                                    <span class="status-badge">@envio.Estado</span>
-                                </a>
-                            }
-                        </div>
-                    }
-                    <a class="button button-light panel-action" asp-controller="Oportunidades" asp-action="Index">Ver oportunidades</a>
-                </article>
-            </section>
-        </main>
+<header class="dashboard-header">
+    <div>
+        <h1>Hola, @Model.NombreUsuario</h1>
+        <p>Esto pasa con tus viajes y envíos.</p>
     </div>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-</body>
-</html>
+    <div class="quick-actions">
+        <a class="button button-light" asp-controller="Envios" asp-action="Crear">Nuevo envío</a>
+        <a class="button button-dark" asp-controller="Viajes" asp-action="Crear">Nuevo viaje</a>
+    </div>
+</header>
+
+@if (TempData["MensajeViaje"] is string mensajeViaje)
+{
+    <div class="alert alert-success mb-3" role="alert">
+        @mensajeViaje
+    </div>
+}
+
+<section class="summary-grid" aria-label="Resumen">
+    <article class="summary-card">
+        <span>Próximos viajes</span>
+        <strong>@Model.ProximosViajes</strong>
+    </article>
+    <article class="summary-card">
+        <span>Envíos pendientes</span>
+        <strong>@Model.EnviosPendientes</strong>
+    </article>
+    <article class="summary-card">
+        <span>Oportunidades</span>
+        <strong>@Model.Oportunidades</strong>
+    </article>
+    <a class="summary-card summary-card-highlight summary-card-link" asp-controller="Potencial" asp-action="Index"
+       title="Ver el detalle del potencial mensual">
+        <span>Potencial del mes</span>
+        <strong>@Model.PotencialMes.ToString("C0", cultura)</strong>
+        <small>Estimación · ver detalle</small>
+    </a>
+</section>
+
+<section class="dashboard-panels">
+    <article class="dashboard-panel">
+        <div class="panel-heading">
+            <h2>Próximos viajes</h2>
+            <a asp-controller="Viajes" asp-action="Index">Ver todos</a>
+        </div>
+        @if (Model.Viajes.Count == 0)
+        {
+            <p class="empty-state">Todavía no tenés viajes activos.</p>
+        }
+        else
+        {
+            <div class="dashboard-list">
+                @foreach (var viaje in Model.Viajes)
+                {
+                    <a class="dashboard-list-item" asp-controller="Viajes" asp-action="Detalle" asp-route-id="@viaje.Id">
+                        <span>
+                            <strong>@viaje.Ruta</strong>
+                            <small>@viaje.Dias · @viaje.Horario</small>
+                        </span>
+                        <span class="status-badge status-active">@viaje.Estado</span>
+                    </a>
+                }
+            </div>
+        }
+    </article>
+
+    <article class="dashboard-panel">
+        <div class="panel-heading">
+            <h2>Envíos pendientes</h2>
+            <a asp-controller="Envios" asp-action="Index">Ver todos</a>
+        </div>
+        @if (Model.Envios.Count == 0)
+        {
+            <p class="empty-state">No tenés envíos pendientes.</p>
+        }
+        else
+        {
+            <div class="dashboard-list">
+                @foreach (var envio in Model.Envios)
+                {
+                    <a class="dashboard-list-item" asp-controller="Envios" asp-action="Detalle" asp-route-id="@envio.Id">
+                        <span>
+                            <strong>@envio.Ruta</strong>
+                            <small>@envio.Descripcion · @envio.MontoOfrecido.ToString("C0", cultura)</small>
+                        </span>
+                        <span class="status-badge">@envio.Estado</span>
+                    </a>
+                }
+            </div>
+        }
+        <a class="button button-light panel-action" asp-controller="Oportunidades" asp-action="Index">Ver oportunidades</a>
+    </article>
+</section>

@@ -1,4 +1,8 @@
-﻿<!DOCTYPE html>
+﻿@{
+    // Con sesión iniciada todas las vistas usan el sidebar del dashboard; sin sesión (login, registro, inicio) la barra de arriba.
+    var conSesion = User.Identity?.IsAuthenticated == true;
+}
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8" />
@@ -22,8 +26,29 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/RuteaYa.Web.styles.css" asp-append-version="true" />
+    @if (conSesion)
+    {
+        <link rel="stylesheet" href="~/css/app-shell.css" asp-append-version="true" />
+    }
+    @await RenderSectionAsync("Styles", required: false)
 </head>
-<body>
+<body class="@(conSesion ? "app-page" : null)">
+@if (conSesion)
+{
+    <div class="dashboard-shell">
+        <partial name="_Sidebar" />
+        <div class="app-main">
+            <main role="main" class="app-content">
+                @RenderBody()
+            </main>
+            <footer class="footer app-footer">
+                <div class="app-footer-inner">&copy; 2026 - RuteaYa</div>
+            </footer>
+        </div>
+    </div>
+}
+else
+{
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm mb-3">
             <div class="container-fluid">
@@ -39,15 +64,6 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Transportes" asp-action="Index">Mis transportes</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Potencial" asp-action="Index">Potencial mensual</a>
-                            </li>
-                        }
                     </ul>
 
                     @* Menú de usuario: depende de si hay cookie de sesión *@
@@ -56,26 +72,12 @@
                             <button type="button" id="qz-tema-toggle" class="btn btn-outline-primary btn-sm"
                                     aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">&#9790;</button>
                         </li>
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                            <li class="nav-item d-flex align-items-center me-2">
-                                <span class="navbar-text">@User.Identity.Name</span>
-                            </li>
-                            <li class="nav-item">
-                                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
-                                    <button type="submit" class="btn btn-outline-secondary btn-sm">Cerrar sesión</button>
-                                </form>
-                            </li>
-                        }
-                        else
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Account" asp-action="Login">Ingresar</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Account" asp-action="Registro">Registrarse</a>
-                            </li>
-                        }
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Account" asp-action="Login">Ingresar</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Account" asp-action="Registro">Registrarse</a>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -92,6 +94,7 @@
             &copy; 2026 - RuteaYa
         </div>
     </footer>
+}
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

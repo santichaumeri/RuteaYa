@@ -1,0 +1,43 @@
+@{
+    // Marca como activo el link de la sección actual (por controller).
+    var actual = ViewContext.RouteData.Values["controller"]?.ToString();
+    var secciones = new (string Controller, string Texto)[]
+    {
+        ("Dashboard", "Inicio"),
+        ("Viajes", "Mis viajes"),
+        ("Envios", "Mis envíos"),
+        ("Oportunidades", "Oportunidades"),
+        ("Optimizador", "Optimizador"),
+        ("Transportes", "Mis transportes"),
+        ("Potencial", "Potencial mensual"),
+        ("Historial", "Historial")
+    };
+}
+
+<aside class="dashboard-sidebar">
+    <div class="sidebar-top">
+        <a class="sidebar-brand" asp-controller="Dashboard" asp-action="Index"><span class="qz-logo" aria-hidden="true">R</span>RuteaYa</a>
+        <button type="button" class="sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#sidebar-menu"
+                aria-controls="sidebar-menu" aria-expanded="false">Menú</button>
+    </div>
+    <div class="sidebar-menu collapse" id="sidebar-menu">
+        <nav class="sidebar-nav" aria-label="Menú principal">
+            @foreach (var seccion in secciones)
+            {
+                var activa = string.Equals(actual, seccion.Controller, StringComparison.OrdinalIgnoreCase);
+                <a class="sidebar-link @(activa ? "active" : null)" asp-controller="@seccion.Controller" asp-action="Index"
+                   aria-current="@(activa ? "page" : null)">@seccion.Texto</a>
+            }
+        </nav>
+        <div class="sidebar-user">
+            <div class="sidebar-user-top">
+                <strong>@User.Identity?.Name</strong>
+                <button type="button" id="qz-tema-toggle" class="theme-toggle"
+                        aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">&#9790;</button>
+            </div>
+            <form asp-controller="Account" asp-action="Logout" method="post">
+                <button class="logout-button" type="submit">Cerrar sesión</button>
+            </form>
+        </div>
+    </div>
+</aside>

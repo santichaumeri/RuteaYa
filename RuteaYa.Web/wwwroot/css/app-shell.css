@@ -1,0 +1,218 @@
+/* Armazón de las pantallas con sesión iniciada: sidebar a la izquierda y contenido a la derecha.
+   Lo usa _Layout.cshtml para todas las vistas. Los colores salen de las variables de site.css (--qz-*),
+   así que cambian solos con el tema claro/oscuro. */
+
+:root {
+    --qz-on-primary: #ffffff;
+    --qz-sidebar-bg: var(--qz-hero-1);
+    --qz-sidebar-text: rgba(255, 255, 255, 0.82);
+    --qz-sidebar-muted: rgba(255, 255, 255, 0.62);
+    --qz-sidebar-hover: rgba(255, 255, 255, 0.14);
+    --qz-sidebar-user: rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-shell {
+    display: flex;
+    flex: 1 0 auto;
+    min-height: 100vh;
+}
+
+.dashboard-sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex: 0 0 230px;
+    width: 230px;
+    height: 100vh;
+    padding: 18px 10px 12px;
+    flex-direction: column;
+    overflow-y: auto;
+    background: var(--qz-sidebar-bg);
+    color: var(--qz-on-primary);
+}
+
+.sidebar-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0 8px 18px;
+    color: var(--qz-on-primary);
+    font-family: Poppins, Inter, system-ui, sans-serif;
+    font-size: 19px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.sidebar-brand:hover {
+    color: var(--qz-on-primary);
+}
+
+/* En pantallas grandes el menú siempre está abierto; en el celular se abre con el botón "Menú"
+   (usa el collapse de Bootstrap, que oculta .collapse:not(.show); acá se lo anula desde "sm"). */
+.sidebar-menu {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+}
+
+@media (min-width: 576px) {
+    .sidebar-menu.collapse:not(.show) {
+        display: flex;
+    }
+}
+
+.sidebar-toggle {
+    display: none;
+    margin-bottom: 18px;
+    padding: 4px 10px;
+    border: 1px solid var(--qz-sidebar-muted);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--qz-on-primary);
+    font-size: 13px;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.sidebar-link {
+    padding: 9px 10px;
+    border-radius: 9px;
+    color: var(--qz-sidebar-text);
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.sidebar-link:hover,
+.sidebar-link.active {
+    background: var(--qz-sidebar-hover);
+    color: var(--qz-on-primary);
+}
+
+.sidebar-link.active {
+    font-weight: 600;
+}
+
+.sidebar-user {
+    margin-top: auto;
+    padding: 10px 8px;
+    border-radius: 9px;
+    background: var(--qz-sidebar-user);
+    font-size: 12px;
+}
+
+.sidebar-user-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.sidebar-user strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.logout-button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--qz-sidebar-muted);
+    font-size: 11px;
+}
+
+.logout-button:hover {
+    color: var(--qz-on-primary);
+}
+
+.theme-toggle {
+    padding: 0 6px;
+    border: 1px solid var(--qz-sidebar-muted);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--qz-on-primary);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.theme-toggle:hover {
+    background: var(--qz-sidebar-hover);
+}
+
+/* Columna derecha: contenido de la vista y footer abajo. */
+.app-main {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.app-content {
+    flex: 1 0 auto;
+    width: min(100%, 1100px);
+    margin: 0 auto;
+    padding: 28px 32px 40px;
+}
+
+.app-footer .app-footer-inner {
+    width: min(100%, 1100px);
+    margin: 0 auto;
+    padding: 0 32px;
+}
+
+@media (max-width: 800px) {
+    .dashboard-sidebar {
+        flex-basis: 190px;
+        width: 190px;
+    }
+
+    .app-content {
+        padding: 20px 16px 32px;
+    }
+
+    .app-footer .app-footer-inner {
+        padding: 0 16px;
+    }
+}
+
+/* Celular (mismo corte que el breakpoint "sm" de Bootstrap): el sidebar pasa a ser una barra arriba. */
+@media (max-width: 575.98px) {
+    .dashboard-shell {
+        display: block;
+    }
+
+    .dashboard-sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        padding-bottom: 6px;
+    }
+
+    .sidebar-brand {
+        padding-bottom: 12px;
+    }
+
+    .sidebar-toggle {
+        display: inline-block;
+        margin-bottom: 12px;
+    }
+
+    .sidebar-nav {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .sidebar-user {
+        margin: 12px 0 8px;
+    }
+}
