@@ -110,7 +110,7 @@
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <div>
                             <h2 class="h5 mb-1">Paradas intermedias</h2>
-                            <p class="text-muted small mb-0">Opcional. Se guardarán en el orden mostrado.</p>
+                            <p class="text-muted small mb-0">Opcional. Se recorren en el orden mostrado: usá ↑ y ↓ para reordenarlas.</p>
                         </div>
                         <button type="button" class="btn btn-outline-primary" id="agregar-parada">Agregar parada</button>
                     </div>
@@ -121,6 +121,8 @@
                             <div class="input-group mb-2 parada-item">
                                 <span class="input-group-text">@(indice + 1)</span>
                                 <input name="Paradas" value="@Model.Paradas[indice]" class="form-control" maxlength="300" placeholder="Dirección de la parada" />
+                                <button type="button" class="btn btn-outline-secondary subir-parada" title="Subir" aria-label="Subir parada">↑</button>
+                                <button type="button" class="btn btn-outline-secondary bajar-parada" title="Bajar" aria-label="Bajar parada">↓</button>
                                 <button type="button" class="btn btn-outline-danger quitar-parada">Quitar</button>
                             </div>
                         }
@@ -170,18 +172,31 @@
                 item.innerHTML = `
                     <span class="input-group-text"></span>
                     <input name="Paradas" value="${valor.replaceAll('"', '&quot;')}" class="form-control" maxlength="300" placeholder="Dirección de la parada" />
+                    <button type="button" class="btn btn-outline-secondary subir-parada" title="Subir" aria-label="Subir parada">↑</button>
+                    <button type="button" class="btn btn-outline-secondary bajar-parada" title="Bajar" aria-label="Bajar parada">↓</button>
                     <button type="button" class="btn btn-outline-danger quitar-parada">Quitar</button>`;
                 container.appendChild(item);
                 actualizarOrden();
             }
 
             addButton.addEventListener('click', () => agregarParada());
+            // Quitar, subir o bajar una parada: el orden de la lista es el orden del recorrido.
             container.addEventListener('click', event => {
-                if (!event.target.classList.contains('quitar-parada')) {
+                const item = event.target.closest('.parada-item');
+                if (!item) {
                     return;
                 }
 
-                event.target.closest('.parada-item').remove();
+                if (event.target.classList.contains('quitar-parada')) {
+                    item.remove();
+                } else if (event.target.classList.contains('subir-parada') && item.previousElementSibling) {
+                    container.insertBefore(item, item.previousElementSibling);
+                } else if (event.target.classList.contains('bajar-parada') && item.nextElementSibling) {
+                    container.insertBefore(item.nextElementSibling, item);
+                } else {
+                    return;
+                }
+
                 actualizarOrden();
             });
         })();

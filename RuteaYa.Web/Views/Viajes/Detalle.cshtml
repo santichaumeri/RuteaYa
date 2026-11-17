@@ -20,10 +20,17 @@
                 <h1 class="h3 mb-1">Detalle del viaje</h1>
                 <p class="text-muted mb-0">Información del recorrido y su configuración.</p>
             </div>
-            <div class="d-flex gap-2">
+            <div class="d-flex flex-wrap gap-2">
                 <a asp-controller="Oportunidades" asp-action="Index" asp-route-viajeId="@Model.Id" class="btn btn-success">Buscar oportunidades</a>
                 <a asp-action="Editar" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
-                <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-secondary">Volver</a>
+                @if (Model.Estado == (int)EstadoViaje.Activo)
+                {
+                    <form asp-action="Desactivar" asp-route-id="@Model.Id" method="post"
+                          onsubmit="return confirm('¿Seguro que querés desactivar este viaje? Ya no va a buscar oportunidades.');">
+                        <button type="submit" class="btn btn-outline-danger">Desactivar</button>
+                    </form>
+                }
+                <a asp-action="Index" class="btn btn-outline-secondary">Volver</a>
             </div>
         </div>
 
@@ -109,6 +116,53 @@
                             <li>@parada.Direccion</li>
                         }
                     </ol>
+                }
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4" id="paquetes-asignados">
+            <div class="card-body p-4">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                    <h2 class="h5 mb-0">Paquetes asignados (@Model.PaquetesAsignados.Count)</h2>
+                    <a asp-controller="Transportes" asp-action="Index" class="btn btn-sm btn-outline-primary">Ir a Mis transportes</a>
+                </div>
+                @if (Model.PaquetesAsignados.Count == 0)
+                {
+                    <p class="text-muted mb-0">Todavía no aceptaste paquetes para este viaje.</p>
+                }
+                else
+                {
+                    <div class="table-responsive paquetes-asignados">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Paquete</th>
+                                    <th>Origen → Destino</th>
+                                    <th class="text-end">Peso</th>
+                                    <th>Estado</th>
+                                    <th class="text-end">Ganancia</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var paquete in Model.PaquetesAsignados)
+                                {
+                                    <tr>
+                                        <td>@paquete.Fecha.ToString("dd/MM/yyyy")</td>
+                                        <td>@paquete.Descripcion</td>
+                                        <td>@paquete.Origen → @paquete.Destino</td>
+                                        <td class="text-end">@paquete.PesoKg.ToString("0.##") kg</td>
+                                        <td><partial name="~/Views/Transportes/_EstadoBadge.cshtml" model="paquete.Estado" /></td>
+                                        <td class="text-end">$@paquete.Ganancia.ToString("N0")</td>
+                                        <td class="text-end">
+                                            <a asp-controller="Transportes" asp-action="Detalle" asp-route-id="@paquete.AsignacionId" class="btn btn-sm btn-outline-secondary">Ver</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 }
             </div>
         </div>

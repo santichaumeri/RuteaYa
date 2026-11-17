@@ -50,7 +50,7 @@ else
                     <td>@(activo ? "Activo" : "Inactivo")</td>
                     <td>
                         <a class="btn btn-sm btn-outline-secondary" asp-action="Detalle" asp-route-id="@viaje.Id">Ver detalle</a>
-                        <a class="btn btn-sm btn-outline-secondary" asp-action="Oportunidades" asp-route-id="@viaje.Id">Oportunidades</a>
+                        <a class="btn btn-sm btn-outline-secondary" asp-controller="Oportunidades" asp-action="Index" asp-route-viajeId="@viaje.Id">Oportunidades</a>
                         @if (activo)
                         {
                             <form asp-action="Desactivar" asp-route-id="@viaje.Id" method="post" class="d-inline">
